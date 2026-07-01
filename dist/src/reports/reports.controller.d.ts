@@ -8,9 +8,9 @@ export declare class ReportsController {
     constructor(reportsService: ReportsService);
     getDashboard(query: DashboardQueryDto, user: AuthenticatedUser): Promise<{
         project: {
-            type: import("../../generated/prisma/enums").ProjectType;
-            name: string;
             id: string;
+            name: string;
+            type: import("../../generated/prisma/enums").ProjectType;
         };
         overview: {
             totalTestCases: number;
@@ -53,50 +53,50 @@ export declare class ReportsController {
         }[];
     }>;
     generate(dto: GenerateReportDto, user: AuthenticatedUser): Promise<{
-        title: string;
         id: string;
         createdAt: Date;
-        data: import("@prisma/client/runtime/client").JsonValue | null;
-        projectId: string;
         createdBy: string;
+        projectId: string;
+        title: string;
         filters: import("@prisma/client/runtime/client").JsonValue | null;
+        data: import("@prisma/client/runtime/client").JsonValue | null;
         shareToken: string;
     }>;
     findByShareToken(shareToken: string): Promise<{
-        title: string;
         id: string;
         createdAt: Date;
-        data: import("@prisma/client/runtime/client").JsonValue | null;
-        projectId: string;
         createdBy: string;
+        projectId: string;
+        title: string;
         filters: import("@prisma/client/runtime/client").JsonValue | null;
+        data: import("@prisma/client/runtime/client").JsonValue | null;
         shareToken: string;
     }>;
     findByProject(query: FindReportsQueryDto): Promise<{
-        title: string;
         id: string;
         createdAt: Date;
+        title: string;
+        shareToken: string;
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
-        shareToken: string;
     }[]>;
     findOne(id: string): Promise<{
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
     } & {
-        title: string;
         id: string;
         createdAt: Date;
-        data: import("@prisma/client/runtime/client").JsonValue | null;
-        projectId: string;
         createdBy: string;
+        projectId: string;
+        title: string;
         filters: import("@prisma/client/runtime/client").JsonValue | null;
+        data: import("@prisma/client/runtime/client").JsonValue | null;
         shareToken: string;
     }>;
 }

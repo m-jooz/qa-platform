@@ -4,16 +4,16 @@ export declare class AttachmentsController {
     private readonly attachmentsService;
     constructor(attachmentsService: AttachmentsService);
     upload(testRunId: string, file: Express.Multer.File): Promise<{
-        type: import("../../generated/prisma/enums").AttachmentType;
         id: string;
         createdAt: Date;
+        type: import("../../generated/prisma/enums").AttachmentType;
         testRunId: string;
         fileUrl: string;
     }>;
     findByTestRun(testRunId: string): Promise<{
-        type: import("../../generated/prisma/enums").AttachmentType;
         id: string;
         createdAt: Date;
+        type: import("../../generated/prisma/enums").AttachmentType;
         testRunId: string;
         fileUrl: string;
     }[]>;

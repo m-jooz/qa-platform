@@ -15,241 +15,241 @@ export declare class TestRunsService {
     private findTestRunOrThrow;
     create(dto: CreateTestRunDto, userId: string): Promise<{
         testCase: {
-            title: string;
             id: string;
             projectId: string;
+            title: string;
             jiraTaskId: string | null;
             steps: string;
             expectedResult: string;
             platform: import("../../generated/prisma/enums.js").Platform;
         };
         executor: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
         bugReviewer: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         } | null;
         attachments: {
-            type: import("../../generated/prisma/enums.js").AttachmentType;
             id: string;
             createdAt: Date;
+            type: import("../../generated/prisma/enums.js").AttachmentType;
             testRunId: string;
             fileUrl: string;
         }[];
     } & {
         id: string;
-        status: TestRunStatus;
         testCaseId: string;
+        status: TestRunStatus;
         actualResult: string | null;
         notes: string | null;
         severity: import("../../generated/prisma/enums.js").Severity | null;
         isBug: boolean;
         bugDetails: string | null;
-        retestOfRunId: string | null;
-        rejectReason: string | null;
         bugStatus: BugStatus | null;
         bugReviewedBy: string | null;
         bugReviewedAt: Date | null;
+        rejectReason: string | null;
         jiraCommentId: string | null;
         jiraStatusBefore: string | null;
         jiraStatusAfter: string | null;
         jiraReassignedTo: string | null;
+        retestOfRunId: string | null;
         executedBy: string;
         executedAt: Date;
     }>;
     findByTestCase(testCaseId: string): Promise<({
         testCase: {
-            title: string;
             id: string;
             projectId: string;
+            title: string;
             jiraTaskId: string | null;
             steps: string;
             expectedResult: string;
             platform: import("../../generated/prisma/enums.js").Platform;
         };
         executor: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
         bugReviewer: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         } | null;
         attachments: {
-            type: import("../../generated/prisma/enums.js").AttachmentType;
             id: string;
             createdAt: Date;
+            type: import("../../generated/prisma/enums.js").AttachmentType;
             testRunId: string;
             fileUrl: string;
         }[];
     } & {
         id: string;
-        status: TestRunStatus;
         testCaseId: string;
+        status: TestRunStatus;
         actualResult: string | null;
         notes: string | null;
         severity: import("../../generated/prisma/enums.js").Severity | null;
         isBug: boolean;
         bugDetails: string | null;
-        retestOfRunId: string | null;
-        rejectReason: string | null;
         bugStatus: BugStatus | null;
         bugReviewedBy: string | null;
         bugReviewedAt: Date | null;
+        rejectReason: string | null;
         jiraCommentId: string | null;
         jiraStatusBefore: string | null;
         jiraStatusAfter: string | null;
         jiraReassignedTo: string | null;
+        retestOfRunId: string | null;
         executedBy: string;
         executedAt: Date;
     })[]>;
     findOne(id: string): Promise<{
         testCase: {
-            title: string;
             id: string;
             projectId: string;
+            title: string;
             jiraTaskId: string | null;
             steps: string;
             expectedResult: string;
             platform: import("../../generated/prisma/enums.js").Platform;
         };
         executor: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
         bugReviewer: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         } | null;
         attachments: {
-            type: import("../../generated/prisma/enums.js").AttachmentType;
             id: string;
             createdAt: Date;
+            type: import("../../generated/prisma/enums.js").AttachmentType;
             testRunId: string;
             fileUrl: string;
         }[];
     } & {
         id: string;
-        status: TestRunStatus;
         testCaseId: string;
+        status: TestRunStatus;
         actualResult: string | null;
         notes: string | null;
         severity: import("../../generated/prisma/enums.js").Severity | null;
         isBug: boolean;
         bugDetails: string | null;
-        retestOfRunId: string | null;
-        rejectReason: string | null;
         bugStatus: BugStatus | null;
         bugReviewedBy: string | null;
         bugReviewedAt: Date | null;
+        rejectReason: string | null;
         jiraCommentId: string | null;
         jiraStatusBefore: string | null;
         jiraStatusAfter: string | null;
         jiraReassignedTo: string | null;
+        retestOfRunId: string | null;
         executedBy: string;
         executedAt: Date;
     }>;
     approveBug(id: string, dto: ApproveBugDto, userId: string): Promise<{
         testCase: {
-            title: string;
             id: string;
             projectId: string;
+            title: string;
             jiraTaskId: string | null;
             steps: string;
             expectedResult: string;
             platform: import("../../generated/prisma/enums.js").Platform;
         };
         executor: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
         bugReviewer: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         } | null;
         attachments: {
-            type: import("../../generated/prisma/enums.js").AttachmentType;
             id: string;
             createdAt: Date;
+            type: import("../../generated/prisma/enums.js").AttachmentType;
             testRunId: string;
             fileUrl: string;
         }[];
     } & {
         id: string;
-        status: TestRunStatus;
         testCaseId: string;
+        status: TestRunStatus;
         actualResult: string | null;
         notes: string | null;
         severity: import("../../generated/prisma/enums.js").Severity | null;
         isBug: boolean;
         bugDetails: string | null;
-        retestOfRunId: string | null;
-        rejectReason: string | null;
         bugStatus: BugStatus | null;
         bugReviewedBy: string | null;
         bugReviewedAt: Date | null;
+        rejectReason: string | null;
         jiraCommentId: string | null;
         jiraStatusBefore: string | null;
         jiraStatusAfter: string | null;
         jiraReassignedTo: string | null;
+        retestOfRunId: string | null;
         executedBy: string;
         executedAt: Date;
     }>;
     rejectBug(id: string, dto: RejectBugDto, userId: string): Promise<{
         testCase: {
-            title: string;
             id: string;
             projectId: string;
+            title: string;
             jiraTaskId: string | null;
             steps: string;
             expectedResult: string;
             platform: import("../../generated/prisma/enums.js").Platform;
         };
         executor: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
         bugReviewer: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         } | null;
         attachments: {
-            type: import("../../generated/prisma/enums.js").AttachmentType;
             id: string;
             createdAt: Date;
+            type: import("../../generated/prisma/enums.js").AttachmentType;
             testRunId: string;
             fileUrl: string;
         }[];
     } & {
         id: string;
-        status: TestRunStatus;
         testCaseId: string;
+        status: TestRunStatus;
         actualResult: string | null;
         notes: string | null;
         severity: import("../../generated/prisma/enums.js").Severity | null;
         isBug: boolean;
         bugDetails: string | null;
-        retestOfRunId: string | null;
-        rejectReason: string | null;
         bugStatus: BugStatus | null;
         bugReviewedBy: string | null;
         bugReviewedAt: Date | null;
+        rejectReason: string | null;
         jiraCommentId: string | null;
         jiraStatusBefore: string | null;
         jiraStatusAfter: string | null;
         jiraReassignedTo: string | null;
+        retestOfRunId: string | null;
         executedBy: string;
         executedAt: Date;
     }>;

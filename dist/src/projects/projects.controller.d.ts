@@ -6,68 +6,68 @@ export declare class ProjectsController {
     private readonly projectsService;
     constructor(projectsService: ProjectsService);
     create(dto: CreateProjectDto, user: AuthenticatedUser): Promise<{
+        id: string;
+        name: string;
+        createdAt: Date;
         type: import("../../generated/prisma/enums.js").ProjectType;
         description: string | null;
-        name: string;
-        id: string;
-        createdAt: Date;
         jiraProjectKey: string | null;
         jiraBaseUrl: string | null;
+        createdBy: string;
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
-        createdBy: string;
     }>;
     findAll(): import("../../generated/prisma/internal/prismaNamespace").PrismaPromise<{
+        id: string;
+        name: string;
+        createdAt: Date;
         type: import("../../generated/prisma/enums.js").ProjectType;
         description: string | null;
-        name: string;
-        id: string;
-        createdAt: Date;
         jiraProjectKey: string | null;
         jiraBaseUrl: string | null;
+        createdBy: string;
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
-        createdBy: string;
     }[]>;
     findOne(id: string): Promise<{
         stats: {
             testCasesCount: number;
             jiraTasksCount: number;
         };
+        id: string;
+        name: string;
+        createdAt: Date;
         type: import("../../generated/prisma/enums.js").ProjectType;
         description: string | null;
-        name: string;
-        id: string;
-        createdAt: Date;
         jiraProjectKey: string | null;
         jiraBaseUrl: string | null;
+        createdBy: string;
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
-        createdBy: string;
     }>;
     update(id: string, dto: UpdateProjectDto, user: AuthenticatedUser): Promise<{
+        id: string;
+        name: string;
+        createdAt: Date;
         type: import("../../generated/prisma/enums.js").ProjectType;
         description: string | null;
-        name: string;
-        id: string;
-        createdAt: Date;
         jiraProjectKey: string | null;
         jiraBaseUrl: string | null;
+        createdBy: string;
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
-        createdBy: string;
     }>;
     remove(id: string, user: AuthenticatedUser): Promise<{
         id: string;

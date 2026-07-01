@@ -15,9 +15,9 @@ export declare class ReportsService {
     private groupByPriority;
     getDashboard(projectId: string, userId: string): Promise<{
         project: {
-            type: import("../../generated/prisma/enums.js").ProjectType;
-            name: string;
             id: string;
+            name: string;
+            type: import("../../generated/prisma/enums.js").ProjectType;
         };
         overview: {
             totalTestCases: number;
@@ -60,50 +60,50 @@ export declare class ReportsService {
         }[];
     }>;
     generate(dto: GenerateReportDto, userId: string): Promise<{
-        title: string;
         id: string;
         createdAt: Date;
-        data: import("@prisma/client/runtime/client").JsonValue | null;
-        projectId: string;
         createdBy: string;
+        projectId: string;
+        title: string;
         filters: import("@prisma/client/runtime/client").JsonValue | null;
+        data: import("@prisma/client/runtime/client").JsonValue | null;
         shareToken: string;
     }>;
     findByProject(projectId: string): Promise<{
-        title: string;
         id: string;
         createdAt: Date;
+        title: string;
+        shareToken: string;
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
-        shareToken: string;
     }[]>;
     findOne(id: string): Promise<{
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
     } & {
-        title: string;
         id: string;
         createdAt: Date;
-        data: import("@prisma/client/runtime/client").JsonValue | null;
-        projectId: string;
         createdBy: string;
+        projectId: string;
+        title: string;
         filters: import("@prisma/client/runtime/client").JsonValue | null;
+        data: import("@prisma/client/runtime/client").JsonValue | null;
         shareToken: string;
     }>;
     findByShareToken(shareToken: string): Promise<{
-        title: string;
         id: string;
         createdAt: Date;
-        data: import("@prisma/client/runtime/client").JsonValue | null;
-        projectId: string;
         createdBy: string;
+        projectId: string;
+        title: string;
         filters: import("@prisma/client/runtime/client").JsonValue | null;
+        data: import("@prisma/client/runtime/client").JsonValue | null;
         shareToken: string;
     }>;
 }

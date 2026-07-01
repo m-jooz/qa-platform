@@ -7,10 +7,10 @@ export declare class NotificationsController {
         notifications: {
             id: string;
             createdAt: Date;
-            entityType: string;
-            entityId: string;
             userId: string;
             message: string;
+            entityType: string;
+            entityId: string;
             isRead: boolean;
         }[];
         unreadCount: number;
@@ -19,10 +19,10 @@ export declare class NotificationsController {
         notifications: {
             id: string;
             createdAt: Date;
-            entityType: string;
-            entityId: string;
             userId: string;
             message: string;
+            entityType: string;
+            entityId: string;
             isRead: boolean;
         }[];
         unreadCount: number;
@@ -31,10 +31,10 @@ export declare class NotificationsController {
         notifications: {
             id: string;
             createdAt: Date;
-            entityType: string;
-            entityId: string;
             userId: string;
             message: string;
+            entityType: string;
+            entityId: string;
             isRead: boolean;
         }[];
         unreadCount: number;

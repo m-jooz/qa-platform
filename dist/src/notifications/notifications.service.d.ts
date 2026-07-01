@@ -11,10 +11,10 @@ export declare class NotificationsService {
     create(params: CreateNotificationParams): import("../../generated/prisma/models").Prisma__NotificationClient<{
         id: string;
         createdAt: Date;
-        entityType: string;
-        entityId: string;
         userId: string;
         message: string;
+        entityType: string;
+        entityId: string;
         isRead: boolean;
     }, never, import("@prisma/client/runtime/client").DefaultArgs, {
         omit: import("../../generated/prisma/internal/prismaNamespace").GlobalOmitConfig | undefined;
@@ -23,10 +23,10 @@ export declare class NotificationsService {
         notifications: {
             id: string;
             createdAt: Date;
-            entityType: string;
-            entityId: string;
             userId: string;
             message: string;
+            entityType: string;
+            entityId: string;
             isRead: boolean;
         }[];
         unreadCount: number;
@@ -35,10 +35,10 @@ export declare class NotificationsService {
         notifications: {
             id: string;
             createdAt: Date;
-            entityType: string;
-            entityId: string;
             userId: string;
             message: string;
+            entityType: string;
+            entityId: string;
             isRead: boolean;
         }[];
         unreadCount: number;
@@ -47,10 +47,10 @@ export declare class NotificationsService {
         notifications: {
             id: string;
             createdAt: Date;
-            entityType: string;
-            entityId: string;
             userId: string;
             message: string;
+            entityType: string;
+            entityId: string;
             isRead: boolean;
         }[];
         unreadCount: number;

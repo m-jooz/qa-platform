@@ -6,31 +6,31 @@ export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
     getProfile(user: AuthenticatedUser): Promise<{
+        id: string;
         name: string;
         email: string;
         role: Role;
-        id: string;
         createdAt: Date;
     }>;
     findAll(): import("../../generated/prisma/internal/prismaNamespace").PrismaPromise<{
+        id: string;
         name: string;
         email: string;
         role: Role;
-        id: string;
         createdAt: Date;
     }[]>;
     findOne(id: string): Promise<{
+        id: string;
         name: string;
         email: string;
         role: Role;
-        id: string;
         createdAt: Date;
     }>;
     updateRole(id: string, dto: UpdateUserRoleDto): Promise<{
+        id: string;
         name: string;
         email: string;
         role: Role;
-        id: string;
         createdAt: Date;
     }>;
     remove(id: string): Promise<{

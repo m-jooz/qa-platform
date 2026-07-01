@@ -8,23 +8,23 @@ export declare class TestCasesController {
     constructor(testCasesService: TestCasesService);
     create(dto: CreateTestCaseDto, user: AuthenticatedUser): Promise<{
         jiraTask: {
-            title: string;
             id: string;
             jiraKey: string;
+            title: string;
             currentStatus: string | null;
         } | null;
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
     } & {
-        type: import("../../generated/prisma/enums.js").TestCaseType;
-        title: string;
         id: string;
         createdAt: Date;
-        projectId: string;
+        type: import("../../generated/prisma/enums.js").TestCaseType;
         createdBy: string;
+        projectId: string;
+        title: string;
         jiraTaskId: string | null;
         steps: string;
         expectedResult: string;
@@ -33,23 +33,23 @@ export declare class TestCasesController {
     }>;
     findByProject(query: FindTestCasesQueryDto): Promise<({
         jiraTask: {
-            title: string;
             id: string;
             jiraKey: string;
+            title: string;
             currentStatus: string | null;
         } | null;
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
     } & {
-        type: import("../../generated/prisma/enums.js").TestCaseType;
-        title: string;
         id: string;
         createdAt: Date;
-        projectId: string;
+        type: import("../../generated/prisma/enums.js").TestCaseType;
         createdBy: string;
+        projectId: string;
+        title: string;
         jiraTaskId: string | null;
         steps: string;
         expectedResult: string;
@@ -58,27 +58,27 @@ export declare class TestCasesController {
     })[]>;
     findOne(id: string): Promise<{
         project: {
-            name: string;
             id: string;
+            name: string;
         };
         jiraTask: {
-            title: string;
             id: string;
             jiraKey: string;
+            title: string;
             currentStatus: string | null;
         } | null;
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
     } & {
-        type: import("../../generated/prisma/enums.js").TestCaseType;
-        title: string;
         id: string;
         createdAt: Date;
-        projectId: string;
+        type: import("../../generated/prisma/enums.js").TestCaseType;
         createdBy: string;
+        projectId: string;
+        title: string;
         jiraTaskId: string | null;
         steps: string;
         expectedResult: string;
@@ -87,23 +87,23 @@ export declare class TestCasesController {
     }>;
     update(id: string, dto: UpdateTestCaseDto, user: AuthenticatedUser): Promise<{
         jiraTask: {
-            title: string;
             id: string;
             jiraKey: string;
+            title: string;
             currentStatus: string | null;
         } | null;
         creator: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
     } & {
-        type: import("../../generated/prisma/enums.js").TestCaseType;
-        title: string;
         id: string;
         createdAt: Date;
-        projectId: string;
+        type: import("../../generated/prisma/enums.js").TestCaseType;
         createdBy: string;
+        projectId: string;
+        title: string;
         jiraTaskId: string | null;
         steps: string;
         expectedResult: string;

@@ -5,16 +5,16 @@ export declare class AttachmentsService {
     constructor(prisma: PrismaService);
     private assertTestRunExists;
     create(testRunId: string, file: Express.Multer.File): Promise<{
-        type: AttachmentType;
         id: string;
         createdAt: Date;
+        type: AttachmentType;
         testRunId: string;
         fileUrl: string;
     }>;
     findByTestRun(testRunId: string): Promise<{
-        type: AttachmentType;
         id: string;
         createdAt: Date;
+        type: AttachmentType;
         testRunId: string;
         fileUrl: string;
     }[]>;

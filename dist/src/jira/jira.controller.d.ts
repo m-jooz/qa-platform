@@ -6,10 +6,10 @@ export declare class JiraController {
     sync(projectId: string, user: AuthenticatedUser): Promise<{
         syncedCount: number;
         tasks: {
-            title: string;
             id: string;
             projectId: string;
             jiraKey: string;
+            title: string;
             currentStatus: string | null;
             currentAssignee: string | null;
             jiraUrl: string | null;
@@ -19,10 +19,10 @@ export declare class JiraController {
     }>;
     listTasks(projectId: string, user: AuthenticatedUser): Promise<{
         unseen: boolean;
-        title: string;
         id: string;
         projectId: string;
         jiraKey: string;
+        title: string;
         currentStatus: string | null;
         currentAssignee: string | null;
         jiraUrl: string | null;
@@ -31,10 +31,10 @@ export declare class JiraController {
     }[]>;
     getTask(projectId: string, taskId: string, user: AuthenticatedUser): Promise<{
         unseen: boolean;
-        title: string;
         id: string;
         projectId: string;
         jiraKey: string;
+        title: string;
         currentStatus: string | null;
         currentAssignee: string | null;
         jiraUrl: string | null;
@@ -43,8 +43,8 @@ export declare class JiraController {
     }>;
     markSeen(projectId: string, taskId: string, user: AuthenticatedUser): Promise<{
         id: string;
-        userId: string;
         jiraTaskId: string;
+        userId: string;
         seenAt: Date;
     }>;
 }

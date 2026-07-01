@@ -15,13 +15,13 @@ export declare class ActivityLogsService {
     log(params: LogActivityParams): import("../../generated/prisma/models").Prisma__ActivityLogClient<{
         id: string;
         createdAt: Date;
-        action: string;
+        projectId: string | null;
+        userId: string;
         entityType: string;
         entityId: string;
+        action: string;
         oldValue: import("@prisma/client/runtime/client").JsonValue | null;
         newValue: import("@prisma/client/runtime/client").JsonValue | null;
-        userId: string;
-        projectId: string | null;
     }, never, import("@prisma/client/runtime/client").DefaultArgs, {
         omit: import("../../generated/prisma/internal/prismaNamespace").GlobalOmitConfig | undefined;
     }>;
