@@ -8,7 +8,7 @@ import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { JiraSearchResponse } from './types/jira-issue.type';
-import { Project } from '../../generated/prisma/client.js';
+import { Project } from '../generated/prisma/client.js';
 
 @Injectable()
 export class JiraService {

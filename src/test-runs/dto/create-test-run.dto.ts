@@ -6,7 +6,7 @@ import {
   IsString,
   IsUUID,
 } from 'class-validator';
-import { Severity, TestRunStatus } from '../../../generated/prisma/enums.js';
+import { Severity, TestRunStatus } from '../../generated/prisma/enums.js';
 
 export class CreateTestRunDto {
   @ApiProperty({ example: 'a3f1c2e4-1234-4abc-9def-0123456789ab' })

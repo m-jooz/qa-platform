@@ -12,7 +12,7 @@ import { UsersService } from './users.service';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Role } from '../../generated/prisma/enums.js';
+import { Role } from '../generated/prisma/enums.js';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 
 @ApiTags('users')

@@ -8,8 +8,8 @@ import {
   Platform,
   Priority,
   TestRunStatus,
-} from '../../generated/prisma/enums.js';
-import type { Prisma } from '../../generated/prisma/client.js';
+} from '../generated/prisma/enums.js';
+import type { Prisma } from '../generated/prisma/client.js';
 import { GenerateReportDto } from './dto/generate-report.dto';
 
 function toJsonValue<T>(value: T): Prisma.InputJsonValue {

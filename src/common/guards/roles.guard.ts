@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import { Role } from '../../../generated/prisma/enums.js';
+import { Role } from '../../generated/prisma/enums.js';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 

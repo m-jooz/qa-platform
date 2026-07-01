@@ -6,7 +6,7 @@ import {
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
-import { AttachmentType } from '../../generated/prisma/enums.js';
+import { AttachmentType } from '../generated/prisma/enums.js';
 import { UPLOADS_DIR } from './multer.config';
 
 @Injectable()

@@ -11,7 +11,7 @@ import {
   BugStatus,
   Role,
   TestRunStatus,
-} from '../../generated/prisma/enums.js';
+} from '../generated/prisma/enums.js';
 import { CreateTestRunDto } from './dto/create-test-run.dto';
 import { ApproveBugDto } from './dto/approve-bug.dto';
 import { RejectBugDto } from './dto/reject-bug.dto';

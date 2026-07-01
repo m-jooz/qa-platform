@@ -6,7 +6,7 @@ import {
   IsString,
   IsUrl,
 } from 'class-validator';
-import { ProjectType } from '../../../generated/prisma/enums.js';
+import { ProjectType } from '../../generated/prisma/enums.js';
 
 export class CreateProjectDto {
   @ApiProperty({ example: 'Mobile Banking App' })

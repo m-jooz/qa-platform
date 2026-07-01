@@ -4,7 +4,7 @@ import {
   Platform,
   Priority,
   TestRunStatus,
-} from '../../../generated/prisma/enums.js';
+} from '../../generated/prisma/enums.js';
 
 export class ReportFiltersDto {
   @ApiProperty({ enum: Platform, required: false })

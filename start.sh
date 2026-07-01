@@ -1,5 +1,9 @@
 #!/bin/sh
-echo "Running migrations..."
-npx prisma migrate deploy
+if [ -n "$DATABASE_URL" ]; then
+  echo "Running migrations..."
+  npx prisma migrate deploy
+else
+  echo "No DATABASE_URL, skipping migrations"
+fi
 echo "Starting app..."
 node dist/main
