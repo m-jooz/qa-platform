@@ -36,9 +36,12 @@ export class TestCasesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List test cases for a project' })
+  @ApiOperation({
+    summary:
+      'List test cases for a project (paginated, searchable, filterable by platform/priority/type)',
+  })
   findByProject(@Query() query: FindTestCasesQueryDto) {
-    return this.testCasesService.findByProject(query.projectId);
+    return this.testCasesService.findByProject(query);
   }
 
   @Get(':id')

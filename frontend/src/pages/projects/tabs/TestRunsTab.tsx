@@ -4,7 +4,12 @@ import { PlayCircle } from 'lucide-react'
 import api from '../../../api/client'
 import { TEST_RUN_STATUS_BADGE } from '../../../lib/badges'
 import { useAuthStore } from '../../../store/auth.store'
-import type { ApiResponse, TestCase, TestRun } from '../../../types'
+import type {
+  ApiResponse,
+  PaginatedResult,
+  TestCase,
+  TestRun,
+} from '../../../types'
 import TableSkeleton from '../components/TableSkeleton'
 import EmptyState from '../components/EmptyState'
 import ErrorState from '../components/ErrorState'
@@ -43,12 +48,13 @@ export default function TestRunsTab({ projectId }: TestRunsTabProps) {
     isError: isErrorTestCases,
     refetch: refetchTestCases,
   } = useQuery({
-    queryKey: ['test-cases', projectId],
+    queryKey: ['test-cases', projectId, 'all'],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<TestCase[]>>('/test-cases', {
-        params: { projectId },
-      })
-      return data.data
+      const { data } = await api.get<ApiResponse<PaginatedResult<TestCase>>>(
+        '/test-cases',
+        { params: { projectId, limit: 100 } },
+      )
+      return data.data.data
     },
   })
 

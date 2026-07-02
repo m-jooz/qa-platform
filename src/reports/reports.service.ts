@@ -158,8 +158,10 @@ export class ReportsService {
       createdAt: log.createdAt,
     }));
 
-    const jiraTasks = await this.jiraService.listTasks(projectId, userId);
-    const unseenJiraTasks = jiraTasks.filter((task) => task.unseen).length;
+    const jiraTasks = await this.jiraService.listTasks(projectId, userId, {
+      limit: 1000,
+    });
+    const unseenJiraTasks = jiraTasks.data.filter((task) => task.unseen).length;
 
     const pendingBugReviewsRaw = await this.prisma.testRun.findMany({
       where: {

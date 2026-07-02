@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ClipboardList, Loader2, RefreshCw } from 'lucide-react'
+import { ClipboardList, Loader2, RefreshCw, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../../api/client'
 import { jiraStatusBadgeClass } from '../../../lib/badges'
 import { formatRelativeTime } from '../../../lib/formatRelativeTime'
-import type { ApiResponse, JiraTask } from '../../../types'
+import { useDebouncedValue } from '../../../lib/useDebouncedValue'
+import type { ApiResponse, JiraTask, PaginatedResult } from '../../../types'
+import Pagination from '../../../components/Pagination'
 import TableSkeleton from '../components/TableSkeleton'
 import EmptyState from '../components/EmptyState'
 import ErrorState from '../components/ErrorState'
@@ -18,21 +20,30 @@ interface JiraTasksTabProps {
 export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
   const queryClient = useQueryClient()
   const [selectedTask, setSelectedTask] = useState<JiraTask | null>(null)
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
 
   const {
-    data: tasks,
+    data: result,
     isLoading,
     isError,
     refetch,
   } = useQuery({
-    queryKey: ['jira-tasks', projectId],
+    queryKey: ['jira-tasks', projectId, page, debouncedSearch],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<JiraTask[]>>(
+      const { data } = await api.get<ApiResponse<PaginatedResult<JiraTask>>>(
         `/jira/${projectId}/tasks`,
+        { params: { page, limit: 20, search: debouncedSearch || undefined } },
       )
       return data.data
     },
   })
+  const tasks = result?.data
 
   const { mutate: sync, isPending: isSyncing } = useMutation({
     mutationFn: () => api.post(`/jira/${projectId}/sync`),
@@ -62,7 +73,20 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="relative">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search Jira tasks…"
+            className="w-56 rounded-lg border border-gray-700 bg-gray-900 py-2 pl-9 pr-3 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
         <button
           type="button"
           onClick={() => sync()}
@@ -82,7 +106,11 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
 
       {isError && <ErrorState onRetry={() => refetch()} />}
 
-      {!isLoading && !isError && tasks && tasks.length === 0 && (
+      {!isLoading && !isError && tasks && tasks.length === 0 && debouncedSearch && (
+        <EmptyState icon={Search} title="No Jira tasks match your search" />
+      )}
+
+      {!isLoading && !isError && tasks && tasks.length === 0 && !debouncedSearch && (
         <EmptyState
           icon={ClipboardList}
           title="No Jira tasks yet. Click Sync to import tasks."
@@ -90,6 +118,7 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
       )}
 
       {!isLoading && !isError && tasks && tasks.length > 0 && (
+        <>
         <div className="overflow-hidden rounded-xl border border-gray-700">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-900 text-xs uppercase text-gray-500">
@@ -138,6 +167,12 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={result!.page}
+          totalPages={result!.totalPages}
+          onPageChange={setPage}
+        />
+        </>
       )}
 
       {selectedTask && (

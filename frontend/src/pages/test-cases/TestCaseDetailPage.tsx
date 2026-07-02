@@ -1,13 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, ExternalLink, Play } from 'lucide-react'
 import api from '../../api/client'
 import { PLATFORM_BADGE, PRIORITY_BADGE, TEST_RUN_STATUS_BADGE } from '../../lib/badges'
-import type { ApiResponse, TestCaseDetail, TestRun } from '../../types'
+import type {
+  ApiResponse,
+  PaginatedResult,
+  TestCaseDetail,
+  TestRun,
+} from '../../types'
 import ErrorState from '../projects/components/ErrorState'
 import EmptyState from '../projects/components/EmptyState'
 import TableSkeleton from '../projects/components/TableSkeleton'
+import Pagination from '../../components/Pagination'
 import RunTestModal from '../projects/modals/RunTestModal'
 
 const TYPE_BADGE: Record<TestCaseDetail['type'], string> = {
@@ -50,6 +56,11 @@ export default function TestCaseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [isRunModalOpen, setIsRunModalOpen] = useState(false)
+  const [runsPage, setRunsPage] = useState(1)
+
+  useEffect(() => {
+    if (id) document.title = 'Test Case — QA Platform'
+  }, [id])
 
   const {
     data: testCase,
@@ -68,20 +79,22 @@ export default function TestCaseDetailPage() {
   })
 
   const {
-    data: testRuns,
+    data: runsResult,
     isLoading: isLoadingRuns,
     isError: isErrorRuns,
     refetch: refetchRuns,
   } = useQuery({
-    queryKey: ['test-runs', id],
+    queryKey: ['test-runs', id, runsPage],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<TestRun[]>>('/test-runs', {
-        params: { testCaseId: id },
-      })
+      const { data } = await api.get<ApiResponse<PaginatedResult<TestRun>>>(
+        '/test-runs',
+        { params: { testCaseId: id, page: runsPage, limit: 10 } },
+      )
       return data.data
     },
     enabled: Boolean(id),
   })
+  const testRuns = runsResult?.data
 
   if (!id) return null
 
@@ -217,6 +230,7 @@ export default function TestCaseDetailPage() {
             )}
 
             {!isLoadingRuns && !isErrorRuns && testRuns && testRuns.length > 0 && (
+              <>
               <div className="overflow-hidden rounded-xl border border-gray-700">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-gray-900 text-xs uppercase text-gray-500">
@@ -259,6 +273,12 @@ export default function TestCaseDetailPage() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                page={runsResult!.page}
+                totalPages={runsResult!.totalPages}
+                onPageChange={setRunsPage}
+              />
+              </>
             )}
           </section>
 

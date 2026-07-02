@@ -15,6 +15,8 @@ import {
 import { CreateTestRunDto } from './dto/create-test-run.dto';
 import { ApproveBugDto } from './dto/approve-bug.dto';
 import { RejectBugDto } from './dto/reject-bug.dto';
+import { FindTestRunsQueryDto } from './dto/find-test-runs-query.dto';
+import { paginate } from '../common/dto/pagination-query.dto';
 
 const testRunInclude = {
   executor: { select: { id: true, name: true, email: true } },
@@ -129,19 +131,32 @@ export class TestRunsService {
     return testRun;
   }
 
-  async findByTestCase(testCaseId: string) {
+  async findByTestCase(query: FindTestRunsQueryDto) {
     const testCase = await this.prisma.testCase.findUnique({
-      where: { id: testCaseId },
+      where: { id: query.testCaseId },
     });
     if (!testCase) {
-      throw new NotFoundException(`Test case with id ${testCaseId} not found`);
+      throw new NotFoundException(
+        `Test case with id ${query.testCaseId} not found`,
+      );
     }
 
-    return this.prisma.testRun.findMany({
-      where: { testCaseId },
-      include: testRunInclude,
-      orderBy: { executedAt: 'desc' },
-    });
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const where = { testCaseId: query.testCaseId };
+
+    const [testRuns, total] = await Promise.all([
+      this.prisma.testRun.findMany({
+        where,
+        include: testRunInclude,
+        orderBy: { executedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.testRun.count({ where }),
+    ]);
+
+    return paginate(testRuns, total, page, limit);
   }
 
   findOne(id: string) {

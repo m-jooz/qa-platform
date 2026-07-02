@@ -10,6 +10,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Role } from '../generated/prisma/enums.js';
@@ -32,6 +33,15 @@ export class UsersController {
   @ApiOperation({ summary: 'List all users (Admin/Lead only)' })
   findAll() {
     return this.usersService.findAll();
+  }
+
+  @Patch('me/password')
+  @ApiOperation({ summary: 'Change the current user\'s password' })
+  changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.usersService.changePassword(user.id, dto);
   }
 
   @Get(':id')

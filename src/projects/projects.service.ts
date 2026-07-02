@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { paginate, PaginationQueryDto } from '../common/dto/pagination-query.dto';
 
 const projectSelect = {
   id: true,
@@ -42,22 +43,36 @@ export class ProjectsService {
     return project;
   }
 
-  async findAll() {
-    const projects = await this.prisma.project.findMany({
-      select: {
-        ...projectSelect,
-        _count: { select: { testCases: true, jiraTasks: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(query: PaginationQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const where = query.search
+      ? { name: { contains: query.search, mode: 'insensitive' as const } }
+      : {};
 
-    return projects.map(({ _count, ...rest }) => ({
+    const [projects, total] = await Promise.all([
+      this.prisma.project.findMany({
+        where,
+        select: {
+          ...projectSelect,
+          _count: { select: { testCases: true, jiraTasks: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.project.count({ where }),
+    ]);
+
+    const data = projects.map(({ _count, ...rest }) => ({
       ...rest,
       stats: {
         testCasesCount: _count.testCases,
         jiraTasksCount: _count.jiraTasks,
       },
     }));
+
+    return paginate(data, total, page, limit);
   }
 
   async findOne(id: string) {

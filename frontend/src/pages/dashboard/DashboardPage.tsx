@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Bug,
@@ -29,7 +29,12 @@ import api from '../../api/client'
 import { PRIORITY_BADGE } from '../../lib/badges'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
 import { useAuthStore } from '../../store/auth.store'
-import type { ApiResponse, DashboardData, Project } from '../../types'
+import type {
+  ApiResponse,
+  DashboardData,
+  PaginatedResult,
+  Project,
+} from '../../types'
 import ApproveBugModal from '../projects/modals/ApproveBugModal'
 import RejectBugModal from '../projects/modals/RejectBugModal'
 
@@ -97,6 +102,10 @@ export default function DashboardPage() {
   const user = useAuthStore((state) => state.user)
   const canReview = user?.role === 'ADMIN' || user?.role === 'LEAD'
 
+  useEffect(() => {
+    document.title = 'Dashboard — QA Platform'
+  }, [])
+
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   )
@@ -106,10 +115,13 @@ export default function DashboardPage() {
   const [rejectTestRunId, setRejectTestRunId] = useState<string | null>(null)
 
   const { data: projects } = useQuery({
-    queryKey: ['projects'],
+    queryKey: ['projects', 'all'],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<Project[]>>('/projects')
-      return data.data
+      const { data } = await api.get<ApiResponse<PaginatedResult<Project>>>(
+        '/projects',
+        { params: { limit: 100 } },
+      )
+      return data.data.data
     },
   })
 

@@ -5,7 +5,12 @@ import { X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import api from '../../../api/client'
-import type { ApiResponse, JiraTask, TestCase } from '../../../types'
+import type {
+  ApiResponse,
+  JiraTask,
+  PaginatedResult,
+  TestCase,
+} from '../../../types'
 
 const testCaseSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -37,12 +42,13 @@ export default function NewTestCaseModal({
   const queryClient = useQueryClient()
 
   const { data: jiraTasks } = useQuery({
-    queryKey: ['jira-tasks', projectId],
+    queryKey: ['jira-tasks', projectId, 'all'],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<JiraTask[]>>(
+      const { data } = await api.get<ApiResponse<PaginatedResult<JiraTask>>>(
         `/jira/${projectId}/tasks`,
+        { params: { limit: 100 } },
       )
-      return data.data
+      return data.data.data
     },
   })
 

@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ClipboardList, FolderOpen, Pencil, Plus } from 'lucide-react'
+import { ClipboardList, FolderOpen, Pencil, Plus, Search } from 'lucide-react'
 import api from '../../api/client'
-import type { ApiResponse, Project } from '../../types'
+import { useDebouncedValue } from '../../lib/useDebouncedValue'
+import type { ApiResponse, PaginatedResult, Project } from '../../types'
+import Pagination from '../../components/Pagination'
 import NewProjectModal from './NewProjectModal'
 
 const TYPE_BADGE_STYLES: Record<Project['type'], string> = {
@@ -86,32 +88,62 @@ function ProjectCardSkeleton() {
 export default function ProjectsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
 
-  const { data: projects, isLoading } = useQuery({
-    queryKey: ['projects'],
+  useEffect(() => {
+    document.title = 'Projects — QA Platform'
+  }, [])
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
+
+  const { data: result, isLoading } = useQuery({
+    queryKey: ['projects', page, debouncedSearch],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<Project[]>>('/projects')
+      const { data } = await api.get<ApiResponse<PaginatedResult<Project>>>(
+        '/projects',
+        { params: { page, limit: 12, search: debouncedSearch || undefined } },
+      )
       return data.data
     },
   })
+  const projects = result?.data
 
   return (
     <div className="px-8 py-8">
-      <div className="mb-8 flex items-start justify-between">
+      <div className="mb-8 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-white">Projects</h1>
           <p className="mt-1 text-sm text-gray-400">
             Manage your testing projects
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
-        >
-          <Plus size={18} />
-          New Project
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search projects…"
+              className="w-56 rounded-lg border border-gray-700 bg-gray-900 py-2 pl-9 pr-3 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="flex flex-shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
+          >
+            <Plus size={18} />
+            New Project
+          </button>
+        </div>
       </div>
 
       {isLoading && (
@@ -122,7 +154,16 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {!isLoading && projects && projects.length === 0 && (
+      {!isLoading && projects && projects.length === 0 && debouncedSearch && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 py-24 text-center">
+          <Search size={40} className="mb-4 text-gray-600" />
+          <p className="text-gray-400">
+            No projects match "{debouncedSearch}"
+          </p>
+        </div>
+      )}
+
+      {!isLoading && projects && projects.length === 0 && !debouncedSearch && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 py-24 text-center">
           <FolderOpen size={40} className="mb-4 text-gray-600" />
           <p className="mb-4 text-gray-400">No projects yet</p>
@@ -137,15 +178,22 @@ export default function ProjectsPage() {
       )}
 
       {!isLoading && projects && projects.length > 0 && (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onEdit={setEditingProject}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {projects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onEdit={setEditingProject}
+              />
+            ))}
+          </div>
+          <Pagination
+            page={result!.page}
+            totalPages={result!.totalPages}
+            onPageChange={setPage}
+          />
+        </>
       )}
 
       {isModalOpen && (

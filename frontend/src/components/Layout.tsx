@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Bell,
   BarChart2,
@@ -8,8 +9,11 @@ import {
   LayoutDashboard,
   LogOut,
   PlayCircle,
+  User as UserIcon,
+  Users,
 } from 'lucide-react'
 import api from '../api/client'
+import { formatRelativeTime } from '../lib/formatRelativeTime'
 import { useAuthStore } from '../store/auth.store'
 import type { ApiResponse, Notification } from '../types'
 
@@ -30,6 +34,9 @@ export default function Layout() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
+  const queryClient = useQueryClient()
+  const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
 
   const { data: notificationsData } = useQuery({
     queryKey: ['notifications'],
@@ -43,6 +50,32 @@ export default function Layout() {
   })
 
   const unreadCount = notificationsData?.unreadCount ?? 0
+  const notifications = notificationsData?.notifications ?? []
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        notifRef.current &&
+        !notifRef.current.contains(event.target as Node)
+      ) {
+        setIsNotifOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.isRead) {
+      try {
+        await api.patch(`/notifications/${notification.id}/read`)
+        queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      } catch {
+        // Non-critical; the notification stays visible either way.
+      }
+    }
+    setIsNotifOpen(false)
+  }
 
   const handleLogout = () => {
     logout()
@@ -77,6 +110,37 @@ export default function Layout() {
           ))}
         </nav>
 
+        <div className="space-y-1 border-t border-gray-800 px-3 py-3">
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              }`
+            }
+          >
+            <UserIcon size={18} />
+            Profile
+          </NavLink>
+          {user?.role === 'ADMIN' && (
+            <NavLink
+              to="/users"
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                }`
+              }
+            >
+              <Users size={18} />
+              Users
+            </NavLink>
+          )}
+        </div>
+
         <div className="border-t border-gray-800 px-4 py-4">
           {user && (
             <div className="mb-3">
@@ -99,9 +163,11 @@ export default function Layout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 flex-shrink-0 items-center justify-end border-b border-gray-800 bg-gray-900 px-6">
+          <div className="relative" ref={notifRef}>
           <button
             type="button"
             aria-label="Notifications"
+            onClick={() => setIsNotifOpen((open) => !open)}
             className="relative rounded-full p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
           >
             <Bell size={20} />
@@ -111,6 +177,47 @@ export default function Layout() {
               </span>
             )}
           </button>
+
+          {isNotifOpen && (
+            <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
+              <div className="border-b border-gray-800 px-4 py-3">
+                <p className="text-sm font-semibold text-white">
+                  Notifications
+                </p>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-gray-500">
+                    No notifications
+                  </p>
+                ) : (
+                  notifications.map((notification) => (
+                    <button
+                      key={notification.id}
+                      type="button"
+                      onClick={() => handleNotificationClick(notification)}
+                      className={`flex w-full flex-col gap-1 border-b border-gray-800 px-4 py-3 text-left last:border-b-0 hover:bg-gray-800 ${
+                        notification.isRead ? '' : 'bg-indigo-500/5'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        {!notification.isRead && (
+                          <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-indigo-500" />
+                        )}
+                        <p className="text-sm text-gray-200">
+                          {notification.message}
+                        </p>
+                      </div>
+                      <p className="pl-3.5 text-xs text-gray-500">
+                        {formatRelativeTime(notification.createdAt)}
+                      </p>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto bg-gray-950">

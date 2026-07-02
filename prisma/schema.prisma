@@ -131,6 +131,8 @@ model JiraTask {
   views      JiraTaskView[]
 
   @@unique([projectId, jiraKey])
+  @@index([projectId])
+  @@index([jiraKey])
   @@map("jira_tasks")
 }
 
@@ -165,6 +167,8 @@ model TestCase {
   creator  User      @relation("TestCaseCreatedBy", fields: [createdBy], references: [id])
   testRuns TestRun[]
 
+  @@index([projectId])
+  @@index([jiraTaskId])
   @@map("test_cases")
 }
 
@@ -196,6 +200,9 @@ model TestRun {
   retests     TestRun[]   @relation("RetestOf")
   attachments Attachment[]
 
+  @@index([testCaseId])
+  @@index([executedBy])
+  @@index([status])
   @@map("test_runs")
 }
 
@@ -222,6 +229,8 @@ model Notification {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([isRead])
   @@map("notifications")
 }
 
@@ -239,6 +248,8 @@ model ActivityLog {
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project? @relation(fields: [projectId], references: [id])
 
+  @@index([projectId])
+  @@index([userId])
   @@map("activity_logs")
 }
 

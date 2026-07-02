@@ -18,7 +18,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
-      <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+      <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} />
     </QueryClientProvider>
   </StrictMode>,
 )

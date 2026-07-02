@@ -1,10 +1,18 @@
-import { Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JiraService } from './jira.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Role } from '../generated/prisma/enums.js';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
+import { FindJiraTasksQueryDto } from './dto/find-jira-tasks-query.dto';
 
 @ApiTags('jira')
 @ApiBearerAuth()
@@ -27,13 +35,15 @@ export class JiraController {
 
   @Get(':projectId/tasks')
   @ApiOperation({
-    summary: 'List Jira tasks for a project with an unseen badge',
+    summary:
+      'List Jira tasks for a project with an unseen badge (paginated, searchable)',
   })
   listTasks(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @CurrentUser() user: AuthenticatedUser,
+    @Query() query: FindJiraTasksQueryDto,
   ) {
-    return this.jiraService.listTasks(projectId, user.id);
+    return this.jiraService.listTasks(projectId, user.id, query);
   }
 
   @Get(':projectId/tasks/:taskId')

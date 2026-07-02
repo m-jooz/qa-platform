@@ -7,6 +7,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { CreateTestCaseDto } from './dto/create-test-case.dto';
 import { UpdateTestCaseDto } from './dto/update-test-case.dto';
+import { FindTestCasesQueryDto } from './dto/find-test-cases-query.dto';
+import { paginate } from '../common/dto/pagination-query.dto';
+import type { Prisma } from '../generated/prisma/client.js';
 
 const testCaseInclude = {
   creator: { select: { id: true, name: true, email: true } },
@@ -83,14 +86,34 @@ export class TestCasesService {
     return testCase;
   }
 
-  async findByProject(projectId: string) {
-    await this.assertProjectExists(projectId);
+  async findByProject(query: FindTestCasesQueryDto) {
+    await this.assertProjectExists(query.projectId);
 
-    return this.prisma.testCase.findMany({
-      where: { projectId },
-      include: testCaseInclude,
-      orderBy: { createdAt: 'desc' },
-    });
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const where: Prisma.TestCaseWhereInput = {
+      projectId: query.projectId,
+      ...(query.platform && { platform: query.platform }),
+      ...(query.priority && { priority: query.priority }),
+      ...(query.type && { type: query.type }),
+      ...(query.search && {
+        title: { contains: query.search, mode: 'insensitive' },
+      }),
+    };
+
+    const [testCases, total] = await Promise.all([
+      this.prisma.testCase.findMany({
+        where,
+        include: testCaseInclude,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.testCase.count({ where }),
+    ]);
+
+    return paginate(testCases, total, page, limit);
   }
 
   async findOne(id: string) {

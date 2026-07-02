@@ -10,6 +10,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { JiraSearchResponse } from './types/jira-issue.type';
 import { Project } from '../generated/prisma/client.js';
+import { FindJiraTasksQueryDto } from './dto/find-jira-tasks-query.dto';
+import { paginate } from '../common/dto/pagination-query.dto';
 
 @Injectable()
 export class JiraService {
@@ -289,26 +291,51 @@ export class JiraService {
     return { syncedCount: syncedTasks.length, tasks: syncedTasks };
   }
 
-  async listTasks(projectId: string, userId: string) {
+  async listTasks(
+    projectId: string,
+    userId: string,
+    query: FindJiraTasksQueryDto = {},
+  ) {
     await this.getProjectOrThrow(projectId);
 
-    const tasks = await this.prisma.jiraTask.findMany({
-      where: { projectId },
-      orderBy: { syncedAt: 'desc' },
-    });
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const where = {
+      projectId,
+      ...(query.search && {
+        OR: [
+          { title: { contains: query.search, mode: 'insensitive' as const } },
+          {
+            jiraKey: { contains: query.search, mode: 'insensitive' as const },
+          },
+        ],
+      }),
+    };
+
+    const [tasks, total] = await Promise.all([
+      this.prisma.jiraTask.findMany({
+        where,
+        orderBy: { syncedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.jiraTask.count({ where }),
+    ]);
 
     const views = await this.prisma.jiraTaskView.findMany({
       where: { userId, jiraTaskId: { in: tasks.map((t) => t.id) } },
     });
     const viewByTaskId = new Map(views.map((v) => [v.jiraTaskId, v]));
 
-    return tasks.map((task) => ({
+    const data = tasks.map((task) => ({
       ...task,
       unseen: this.isUnseen(
         task.jiraUpdatedAt,
         viewByTaskId.get(task.id)?.seenAt,
       ),
     }));
+
+    return paginate(data, total, page, limit);
   }
 
   async getTask(projectId: string, taskId: string, userId: string) {

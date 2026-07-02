@@ -36,9 +36,9 @@ export class TestRunsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List test runs for a test case' })
+  @ApiOperation({ summary: 'List test runs for a test case (paginated)' })
   findByTestCase(@Query() query: FindTestRunsQueryDto) {
-    return this.testRunsService.findByTestCase(query.testCaseId);
+    return this.testRunsService.findByTestCase(query);
   }
 
   @Get(':id')

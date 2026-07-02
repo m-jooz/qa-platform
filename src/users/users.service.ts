@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -8,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, Role } from '../generated/prisma/client.js';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 const SALT_ROUNDS = 10;
 
@@ -82,6 +84,29 @@ export class UsersService {
         createdAt: true,
       },
     });
+  }
+
+  async changePassword(id: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      dto.oldPassword,
+      user.passwordHash,
+    );
+    if (!passwordMatches) {
+      throw new BadRequestException('Old password is incorrect');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, SALT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+    });
+
+    return { success: true };
   }
 
   async remove(id: string) {
