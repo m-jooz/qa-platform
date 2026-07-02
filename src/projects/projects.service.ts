@@ -11,6 +11,7 @@ const projectSelect = {
   description: true,
   jiraProjectKey: true,
   jiraBaseUrl: true,
+  jiraEmail: true,
   createdBy: true,
   createdAt: true,
   creator: { select: { id: true, name: true, email: true } },

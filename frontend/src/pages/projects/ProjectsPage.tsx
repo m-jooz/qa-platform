@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ClipboardList, FolderOpen, Plus } from 'lucide-react'
+import { ClipboardList, FolderOpen, Pencil, Plus } from 'lucide-react'
 import api from '../../api/client'
 import type { ApiResponse, Project } from '../../types'
 import NewProjectModal from './NewProjectModal'
@@ -12,7 +12,13 @@ const TYPE_BADGE_STYLES: Record<Project['type'], string> = {
   IOS: 'bg-purple-500/10 text-purple-400 border border-purple-500/30',
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({
+  project,
+  onEdit,
+}: {
+  project: Project
+  onEdit: (project: Project) => void
+}) {
   const navigate = useNavigate()
 
   return (
@@ -22,11 +28,24 @@ function ProjectCard({ project }: { project: Project }) {
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <h3 className="text-lg font-semibold text-white">{project.name}</h3>
-        <span
-          className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_BADGE_STYLES[project.type]}`}
-        >
-          {project.type}
-        </span>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_BADGE_STYLES[project.type]}`}
+          >
+            {project.type}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(project)
+            }}
+            aria-label="Edit project"
+            className="rounded-lg p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
+          >
+            <Pencil size={14} />
+          </button>
+        </div>
       </div>
 
       <p className="mb-6 line-clamp-2 text-sm text-gray-400">
@@ -66,6 +85,7 @@ function ProjectCardSkeleton() {
 
 export default function ProjectsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects'],
@@ -119,13 +139,24 @@ export default function ProjectsPage() {
       {!isLoading && projects && projects.length > 0 && (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <ProjectCard
+              key={project.id}
+              project={project}
+              onEdit={setEditingProject}
+            />
           ))}
         </div>
       )}
 
       {isModalOpen && (
         <NewProjectModal onClose={() => setIsModalOpen(false)} />
+      )}
+
+      {editingProject && (
+        <NewProjectModal
+          project={editingProject}
+          onClose={() => setEditingProject(null)}
+        />
       )}
     </div>
   )

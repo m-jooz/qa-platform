@@ -24,6 +24,8 @@ export interface Project {
   type: 'WEB' | 'ANDROID' | 'IOS'
   description: string | null
   jiraProjectKey: string | null
+  jiraBaseUrl: string | null
+  jiraEmail: string
   createdAt: string
   stats: {
     testCasesCount: number

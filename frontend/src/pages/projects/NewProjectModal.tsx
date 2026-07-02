@@ -7,49 +7,82 @@ import toast from 'react-hot-toast'
 import api from '../../api/client'
 import type { ApiResponse, Project } from '../../types'
 
-const projectSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  type: z.enum(['WEB', 'ANDROID', 'IOS'], {
-    message: 'Select a project type',
-  }),
-  description: z.string().optional(),
-  jiraProjectKey: z.string().min(1, 'Jira project key is required'),
-  jiraBaseUrl: z
-    .string()
-    .min(1, 'Jira base URL is required')
-    .url('Enter a valid URL'),
-  jiraEmail: z.email('Enter a valid email'),
-  jiraApiToken: z.string().min(1, 'Jira API token is required'),
-})
+function buildProjectSchema(isEditMode: boolean) {
+  return z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    type: z.enum(['WEB', 'ANDROID', 'IOS'], {
+      message: 'Select a project type',
+    }),
+    description: z.string().optional(),
+    jiraProjectKey: z.string().min(1, 'Jira project key is required'),
+    jiraBaseUrl: z
+      .string()
+      .min(1, 'Jira base URL is required')
+      .url('Enter a valid URL'),
+    jiraEmail: z.email('Enter a valid email'),
+    jiraApiToken: isEditMode
+      ? z.string().optional()
+      : z.string().min(1, 'Jira API token is required'),
+  })
+}
 
-type ProjectFormValues = z.infer<typeof projectSchema>
+type ProjectFormValues = z.infer<ReturnType<typeof buildProjectSchema>>
 
 interface NewProjectModalProps {
+  project?: Project
   onClose: () => void
 }
 
-export default function NewProjectModal({ onClose }: NewProjectModalProps) {
+export default function NewProjectModal({
+  project,
+  onClose,
+}: NewProjectModalProps) {
   const queryClient = useQueryClient()
+  const isEditMode = Boolean(project)
 
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<ProjectFormValues>({
-    resolver: zodResolver(projectSchema),
+    resolver: zodResolver(buildProjectSchema(isEditMode)),
+    defaultValues: project
+      ? {
+          name: project.name,
+          type: project.type,
+          description: project.description ?? '',
+          jiraProjectKey: project.jiraProjectKey ?? '',
+          jiraBaseUrl: project.jiraBaseUrl ?? '',
+          jiraEmail: project.jiraEmail ?? '',
+          jiraApiToken: '',
+        }
+      : undefined,
   })
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (values: ProjectFormValues) =>
-      api.post<ApiResponse<Project>>('/projects', values),
+    mutationFn: (values: ProjectFormValues) => {
+      const payload = { ...values }
+      if (isEditMode && !payload.jiraApiToken) {
+        delete payload.jiraApiToken
+      }
+      return isEditMode
+        ? api.patch<ApiResponse<Project>>(`/projects/${project!.id}`, payload)
+        : api.post<ApiResponse<Project>>('/projects', payload)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
-      toast.success('Project created successfully')
+      if (isEditMode) {
+        queryClient.invalidateQueries({ queryKey: ['project', project!.id] })
+      }
+      toast.success(
+        isEditMode ? 'Project updated successfully' : 'Project created successfully',
+      )
       onClose()
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.message ?? 'Failed to create project'
+        error.response?.data?.message ??
+        `Failed to ${isEditMode ? 'update' : 'create'} project`
       toast.error(Array.isArray(message) ? message[0] : message)
     },
   })
@@ -58,9 +91,11 @@ export default function NewProjectModal({ onClose }: NewProjectModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-gray-800 p-6 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-gray-800 p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">New Project</h2>
+          <h2 className="text-lg font-semibold text-white">
+            {isEditMode ? 'Edit Project' : 'New Project'}
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -186,7 +221,9 @@ export default function NewProjectModal({ onClose }: NewProjectModalProps) {
             <input
               type="password"
               className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              placeholder="••••••••••••"
+              placeholder={
+                isEditMode ? 'Leave blank to keep existing' : '••••••••••••'
+              }
               {...register('jiraApiToken')}
             />
             {errors.jiraApiToken && (
@@ -201,7 +238,13 @@ export default function NewProjectModal({ onClose }: NewProjectModalProps) {
             disabled={isPending}
             className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? 'Creating…' : 'Create Project'}
+            {isPending
+              ? isEditMode
+                ? 'Saving…'
+                : 'Creating…'
+              : isEditMode
+                ? 'Save Changes'
+                : 'Create Project'}
           </button>
         </form>
       </div>
