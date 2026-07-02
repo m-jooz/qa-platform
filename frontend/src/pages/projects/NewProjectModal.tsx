@@ -18,6 +18,7 @@ const projectSchema = z.object({
     .string()
     .min(1, 'Jira base URL is required')
     .url('Enter a valid URL'),
+  jiraEmail: z.email('Enter a valid email'),
   jiraApiToken: z.string().min(1, 'Jira API token is required'),
 })
 
@@ -157,6 +158,23 @@ export default function NewProjectModal({ onClose }: NewProjectModalProps) {
             {errors.jiraBaseUrl && (
               <p className="mt-1 text-xs text-red-400">
                 {errors.jiraBaseUrl.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-300">
+              Jira Account Email
+            </label>
+            <input
+              type="email"
+              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              placeholder="you@company.com"
+              {...register('jiraEmail')}
+            />
+            {errors.jiraEmail && (
+              <p className="mt-1 text-xs text-red-400">
+                {errors.jiraEmail.message}
               </p>
             )}
           </div>

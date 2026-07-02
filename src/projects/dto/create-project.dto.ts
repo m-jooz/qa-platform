@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsEmail,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -38,6 +39,10 @@ export class CreateProjectDto {
   @IsOptional()
   @IsUrl({ require_tld: false })
   jiraBaseUrl?: string;
+
+  @ApiProperty({ example: 'jane.doe@company.com' })
+  @IsEmail()
+  jiraEmail: string;
 
   @ApiProperty({ example: 'ATATT3xFfGF0...', required: false })
   @IsOptional()

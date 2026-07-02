@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { JiraSearchResponse } from './types/jira-issue.type';
@@ -29,11 +29,12 @@ export class JiraService {
 
   private assertJiraConfigured(project: Project): asserts project is Project & {
     jiraBaseUrl: string;
+    jiraEmail: string;
     jiraApiToken: string;
   } {
-    if (!project.jiraBaseUrl || !project.jiraApiToken) {
+    if (!project.jiraBaseUrl || !project.jiraEmail || !project.jiraApiToken) {
       throw new BadRequestException(
-        'Project is missing Jira configuration (jiraBaseUrl, jiraApiToken)',
+        'Project is missing Jira configuration (jiraBaseUrl, jiraEmail, jiraApiToken)',
       );
     }
   }
@@ -42,8 +43,49 @@ export class JiraService {
     return project.jiraBaseUrl.replace(/\/+$/, '');
   }
 
-  private authHeaders(project: { jiraApiToken: string }) {
-    return { Authorization: `Bearer ${project.jiraApiToken}` };
+  /** Jira Cloud requires Basic Auth (email:apiToken), not a Bearer token. */
+  private authHeaders(project: { jiraEmail: string; jiraApiToken: string }) {
+    const credentials = Buffer.from(
+      `${project.jiraEmail}:${project.jiraApiToken}`,
+    ).toString('base64');
+    return { Authorization: `Basic ${credentials}` };
+  }
+
+  /**
+   * Builds a diagnostic error message including Jira's HTTP status, its
+   * own error body, and the URL that was called, instead of a generic
+   * "failed to fetch" message that hides the actual cause.
+   */
+  private buildJiraErrorMessage(error: unknown, url: string): string {
+    if (isAxiosError(error)) {
+      if (error.response) {
+        const body = error.response.data as
+          | { errorMessages?: string[]; errors?: Record<string, string>; message?: string }
+          | string
+          | undefined;
+
+        let jiraMessage: string;
+        if (typeof body === 'string') {
+          jiraMessage = body;
+        } else if (body?.errorMessages?.length) {
+          jiraMessage = body.errorMessages.join('; ');
+        } else if (body?.errors && Object.keys(body.errors).length) {
+          jiraMessage = Object.entries(body.errors)
+            .map(([field, msg]) => `${field}: ${msg}`)
+            .join('; ');
+        } else if (body?.message) {
+          jiraMessage = body.message;
+        } else {
+          jiraMessage = error.response.statusText || 'No error body returned';
+        }
+
+        return `Failed to fetch tasks from Jira: HTTP ${error.response.status} at ${url} — ${jiraMessage}`;
+      }
+
+      return `Failed to fetch tasks from Jira: no response received from ${url} (${error.message})`;
+    }
+
+    return `Failed to fetch tasks from Jira: unexpected error calling ${url} (${String(error)})`;
   }
 
   /** Fetches the current status name of a Jira issue. */
@@ -134,29 +176,32 @@ export class JiraService {
     if (
       !project.jiraBaseUrl ||
       !project.jiraProjectKey ||
+      !project.jiraEmail ||
       !project.jiraApiToken
     ) {
       throw new BadRequestException(
-        'Project is missing Jira configuration (jiraBaseUrl, jiraProjectKey, jiraApiToken)',
+        'Project is missing Jira configuration (jiraBaseUrl, jiraProjectKey, jiraEmail, jiraApiToken)',
       );
     }
+    this.assertJiraConfigured(project);
+
+    const searchUrl = `${project.jiraBaseUrl.replace(/\/+$/, '')}/rest/api/2/search`;
 
     let issues: JiraSearchResponse['issues'];
     try {
-      const response = await axios.get<JiraSearchResponse>(
-        `${project.jiraBaseUrl.replace(/\/+$/, '')}/rest/api/2/search`,
-        {
-          params: {
-            jql: `project=${project.jiraProjectKey}`,
-            fields: 'summary,status,assignee,updated',
-            maxResults: 100,
-          },
-          headers: { Authorization: `Bearer ${project.jiraApiToken}` },
+      const response = await axios.get<JiraSearchResponse>(searchUrl, {
+        params: {
+          jql: `project=${project.jiraProjectKey}`,
+          fields: 'summary,status,assignee,updated',
+          maxResults: 100,
         },
-      );
+        headers: this.authHeaders(project),
+      });
       issues = response.data.issues ?? [];
-    } catch {
-      throw new BadGatewayException('Failed to fetch tasks from Jira');
+    } catch (error) {
+      throw new BadGatewayException(
+        this.buildJiraErrorMessage(error, searchUrl),
+      );
     }
 
     const syncedTasks = await Promise.all(

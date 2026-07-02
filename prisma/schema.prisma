@@ -101,6 +101,7 @@ model Project {
   description     String?
   jiraProjectKey  String?     @map("jira_project_key")
   jiraBaseUrl     String?     @map("jira_base_url")
+  jiraEmail       String      @default("") @map("jira_email")
   jiraApiToken    String?     @map("jira_api_token")
   createdBy       String      @map("created_by")
   createdAt       DateTime    @default(now()) @map("created_at")
