@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { PlayCircle, Search } from 'lucide-react'
 import api from '../../api/client'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
@@ -19,6 +20,7 @@ import ErrorState from '../projects/components/ErrorState'
 const LAST_PROJECT_KEY = 'qa-platform:last-dashboard-project'
 
 export default function DashboardPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [projectId, setProjectId] = useState<string | null>(
     () => localStorage.getItem(LAST_PROJECT_KEY),
@@ -30,8 +32,8 @@ export default function DashboardPage() {
   const debouncedSearch = useDebouncedValue(search)
 
   useEffect(() => {
-    document.title = 'Dashboard — QA Platform'
-  }, [])
+    document.title = `${t('dashboard.title')} — QA Platform`
+  }, [t])
 
   useEffect(() => {
     if (projectId) localStorage.setItem(LAST_PROJECT_KEY, projectId)
@@ -97,9 +99,9 @@ export default function DashboardPage() {
     <div className="px-8 py-8">
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+          <h1 className="text-2xl font-semibold text-white">{t('dashboard.title')}</h1>
           <p className="mt-1 text-sm text-gray-400">
-            What's ready to test, right now
+            {t('dashboard.subtitle')}
           </p>
         </div>
         <select
@@ -107,7 +109,7 @@ export default function DashboardPage() {
           onChange={(e) => setProjectId(e.target.value || null)}
           className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
         >
-          <option value="">Select a project</option>
+          <option value="">{t('common.selectAProject')}</option>
           {projects?.map((project) => (
             <option key={project.id} value={project.id}>
               {project.name}
@@ -118,7 +120,7 @@ export default function DashboardPage() {
 
       {!projectId && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 py-24 text-center">
-          <p className="text-gray-400">Select a project to get started</p>
+          <p className="text-gray-400">{t('dashboard.selectProjectPrompt')}</p>
         </div>
       )}
 
@@ -134,7 +136,7 @@ export default function DashboardPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by title or key…"
+                placeholder={t('dashboard.searchPlaceholder')}
                 className="w-56 rounded-lg border border-gray-700 bg-gray-900 py-2 pl-9 pr-3 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
@@ -143,7 +145,7 @@ export default function DashboardPage() {
               onChange={(e) => setQaRequestedByName(e.target.value)}
               className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             >
-              <option value="">Sent by anyone</option>
+              <option value="">{t('dashboard.sentByAnyone')}</option>
               {requesterOptions.map((name) => (
                 <option key={name} value={name}>
                   {name}
@@ -156,7 +158,7 @@ export default function DashboardPage() {
               onChange={(e) => setDateFrom(e.target.value)}
               className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             />
-            <span className="text-sm text-gray-500">to</span>
+            <span className="text-sm text-gray-500">{t('common.to')}</span>
             <input
               type="date"
               value={dateTo}
@@ -172,12 +174,12 @@ export default function DashboardPage() {
             <>
               <section className="mb-10">
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                  Tasks Ready for Testing
+                  {t('dashboard.readyForTesting')}
                 </h2>
                 {overview.readyForTesting.length === 0 ? (
                   <EmptyState
                     icon={PlayCircle}
-                    title="No tasks are currently in Testing status"
+                    title={t('dashboard.noTasksReady')}
                   />
                 ) : (
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -192,22 +194,21 @@ export default function DashboardPage() {
                               {task.jiraKey}
                             </span>
                             <span className="text-xs text-gray-500">
-                              {task.testCasesCount} test case
-                              {task.testCasesCount === 1 ? '' : 's'}
+                              {t('dashboard.testCaseCount', { count: task.testCasesCount })}
                             </span>
                           </div>
                           <p className="mb-3 text-sm font-medium text-white">
                             {task.title}
                           </p>
                           <div className="mb-1 text-xs text-gray-400">
-                            Sent by{' '}
+                            {t('dashboard.sentBy')}{' '}
                             <span className="text-gray-300">
-                              {task.qaRequestedByName ?? 'Unknown'}
+                              {task.qaRequestedByName ?? t('common.unknown')}
                             </span>{' '}
                             · {formatRelativeTime(task.sentToQaAt)}
                           </div>
                           <div className="text-xs text-gray-500">
-                            Assignee: {task.currentAssignee ?? 'Unassigned'}
+                            {t('dashboard.assignee')}: {task.currentAssignee ?? t('common.unassigned')}
                           </div>
                         </div>
                         <button
@@ -217,7 +218,7 @@ export default function DashboardPage() {
                           }
                           className="mt-4 w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
                         >
-                          Start Testing
+                          {t('dashboard.startTesting')}
                         </button>
                       </div>
                     ))}
@@ -227,12 +228,12 @@ export default function DashboardPage() {
 
               <section className="mb-10">
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                  In Progress
+                  {t('dashboard.inProgress')}
                 </h2>
                 {overview.inProgress.length === 0 ? (
                   <EmptyState
                     icon={PlayCircle}
-                    title="No tasks currently being tested"
+                    title={t('dashboard.noTasksInProgress')}
                   />
                 ) : (
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -253,7 +254,7 @@ export default function DashboardPage() {
                           {task.title}
                         </p>
                         <p className="text-xs text-gray-400">
-                          {completedCount}/{testCasesCount} test cases completed
+                          {t('dashboard.testCasesCompleted', { completed: completedCount, total: testCasesCount })}
                         </p>
                       </div>
                     ))}
@@ -263,22 +264,22 @@ export default function DashboardPage() {
 
               <section>
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                  Recently Completed
+                  {t('dashboard.recentlyCompleted')}
                 </h2>
                 {overview.recentlyCompleted.length === 0 ? (
                   <EmptyState
                     icon={PlayCircle}
-                    title="No QA submissions yet"
+                    title={t('dashboard.noSubmissions')}
                   />
                 ) : (
                   <div className="overflow-hidden rounded-xl border border-gray-700">
                     <table className="w-full text-left text-sm">
                       <thead className="bg-gray-900 text-xs uppercase text-gray-500">
                         <tr>
-                          <th className="px-4 py-3">Task</th>
-                          <th className="px-4 py-3">Result</th>
-                          <th className="px-4 py-3">Submitted By</th>
-                          <th className="px-4 py-3">Date</th>
+                          <th className="px-4 py-3">{t('dashboard.task')}</th>
+                          <th className="px-4 py-3">{t('dashboard.result')}</th>
+                          <th className="px-4 py-3">{t('dashboard.submittedBy')}</th>
+                          <th className="px-4 py-3">{t('common.date')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-700 bg-gray-800">
@@ -292,7 +293,7 @@ export default function DashboardPage() {
                               <span
                                 className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${QA_OVERALL_STATUS_BADGE[submission.overallStatus]}`}
                               >
-                                {submission.overallStatus} ({submission.passCount}/
+                                {t(`status.${submission.overallStatus.toLowerCase()}`)} ({submission.passCount}/
                                 {submission.totalCount})
                               </span>
                             </td>

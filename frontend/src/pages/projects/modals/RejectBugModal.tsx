@@ -3,14 +3,17 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { X } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import api from '../../../api/client'
 
-const rejectBugSchema = z.object({
-  rejectReason: z.string().min(1, 'Reject reason is required'),
-})
+function buildRejectBugSchema(t: (key: string) => string) {
+  return z.object({
+    rejectReason: z.string().min(1, t('testRuns.rejectReasonRequired')),
+  })
+}
 
-type RejectBugFormValues = z.infer<typeof rejectBugSchema>
+type RejectBugFormValues = z.infer<ReturnType<typeof buildRejectBugSchema>>
 
 interface RejectBugModalProps {
   testRunId: string
@@ -21,6 +24,7 @@ export default function RejectBugModal({
   testRunId,
   onClose,
 }: RejectBugModalProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const {
@@ -28,7 +32,7 @@ export default function RejectBugModal({
     handleSubmit,
     formState: { errors },
   } = useForm<RejectBugFormValues>({
-    resolver: zodResolver(rejectBugSchema),
+    resolver: zodResolver(buildRejectBugSchema(t)),
   })
 
   const { mutate, isPending } = useMutation({
@@ -37,11 +41,11 @@ export default function RejectBugModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['test-runs'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      toast.success('Bug rejected')
+      toast.success(t('testRuns.bugRejectedToast'))
       onClose()
     },
     onError: (error: any) => {
-      const message = error.response?.data?.message ?? 'Failed to reject bug'
+      const message = error.response?.data?.message ?? t('testRuns.rejectFailed')
       toast.error(Array.isArray(message) ? message[0] : message)
     },
   })
@@ -52,11 +56,11 @@ export default function RejectBugModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl bg-gray-800 p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Reject Bug</h2>
+          <h2 className="text-lg font-semibold text-white">{t('testRuns.rejectBug')}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="rounded-lg p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
           >
             <X size={20} />
@@ -70,7 +74,7 @@ export default function RejectBugModal({
         >
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Reject Reason
+              {t('testRuns.rejectReason')}
             </label>
             <textarea
               rows={4}
@@ -89,7 +93,7 @@ export default function RejectBugModal({
             disabled={isPending}
             className="w-full rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? 'Rejecting…' : 'Reject'}
+            {isPending ? t('testRuns.rejecting') : t('common.reject')}
           </button>
         </form>
       </div>

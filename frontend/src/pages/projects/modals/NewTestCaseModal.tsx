@@ -1,8 +1,9 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { X } from 'lucide-react'
+import { ListOrdered, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import api from '../../../api/client'
 import type {
@@ -12,23 +13,25 @@ import type {
   TestCase,
 } from '../../../types'
 
-const testCaseSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  steps: z.string().min(1, 'Steps are required'),
-  expectedResult: z.string().min(1, 'Expected result is required'),
-  platform: z.enum(['WEB', 'ANDROID', 'IOS'], {
-    message: 'Select a platform',
-  }),
-  type: z.enum(['MANUAL', 'E2E', 'API', 'UNIT', 'PERFORMANCE'], {
-    message: 'Select a type',
-  }),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], {
-    message: 'Select a priority',
-  }),
-  jiraTaskId: z.string().optional(),
-})
+function buildTestCaseSchema(t: (key: string) => string) {
+  return z.object({
+    title: z.string().min(1, t('testCases.titleRequired')),
+    steps: z.string().min(1, t('testCases.stepsRequired')),
+    expectedResult: z.string().min(1, t('testCases.expectedResultRequired')),
+    platform: z.enum(['WEB', 'ANDROID', 'IOS'], {
+      message: t('testCases.selectAPlatform'),
+    }),
+    type: z.enum(['MANUAL', 'E2E', 'API', 'UNIT', 'PERFORMANCE'], {
+      message: t('testCases.selectAType'),
+    }),
+    priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], {
+      message: t('testCases.selectAPriority'),
+    }),
+    jiraTaskId: z.string().optional(),
+  })
+}
 
-type TestCaseFormValues = z.infer<typeof testCaseSchema>
+type TestCaseFormValues = z.infer<ReturnType<typeof buildTestCaseSchema>>
 
 interface NewTestCaseModalProps {
   projectId: string
@@ -39,6 +42,7 @@ export default function NewTestCaseModal({
   projectId,
   onClose,
 }: NewTestCaseModalProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const { data: jiraTasks } = useQuery({
@@ -55,11 +59,25 @@ export default function NewTestCaseModal({
   const {
     register,
     handleSubmit,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<TestCaseFormValues>({
-    resolver: zodResolver(testCaseSchema),
+    resolver: zodResolver(buildTestCaseSchema(t)),
     defaultValues: { priority: 'MEDIUM' },
   })
+
+  const handleFormatSteps = () => {
+    const lines = getValues('steps')
+      .split('\n')
+      .map((line) => line.replace(/^\s*\d+[.)]\s*/, '').trim())
+      .filter((line) => line.length > 0)
+    setValue(
+      'steps',
+      lines.map((line, index) => `${index + 1}. ${line}`).join('\n'),
+      { shouldValidate: true },
+    )
+  }
 
   const { mutate, isPending } = useMutation({
     mutationFn: (values: TestCaseFormValues) =>
@@ -70,12 +88,12 @@ export default function NewTestCaseModal({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['test-cases', projectId] })
-      toast.success('Test case created')
+      toast.success(t('testCases.testCaseCreated'))
       onClose()
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.message ?? 'Failed to create test case'
+        error.response?.data?.message ?? t('testCases.createFailed')
       toast.error(Array.isArray(message) ? message[0] : message)
     },
   })
@@ -87,12 +105,12 @@ export default function NewTestCaseModal({
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-gray-800 p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">
-            New Test Case
+            {t('testCases.newTestCase')}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="rounded-lg p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
           >
             <X size={20} />
@@ -106,7 +124,7 @@ export default function NewTestCaseModal({
         >
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Title
+              {t('testCases.testCaseTitle')}
             </label>
             <input
               type="text"
@@ -121,13 +139,23 @@ export default function NewTestCaseModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-300">
-              Steps
-            </label>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-sm font-medium text-gray-300">
+                {t('testCases.steps')}
+              </label>
+              <button
+                type="button"
+                onClick={handleFormatSteps}
+                className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+              >
+                <ListOrdered size={12} />
+                {t('testCases.formatNumbered')}
+              </button>
+            </div>
             <textarea
               rows={4}
               className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              placeholder={'1. Go to...\n2. Click...'}
+              placeholder={t('testCases.stepsPlaceholder')}
               {...register('steps')}
             />
             {errors.steps && (
@@ -139,7 +167,7 @@ export default function NewTestCaseModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Expected Result
+              {t('testCases.expectedResult')}
             </label>
             <textarea
               rows={3}
@@ -156,7 +184,7 @@ export default function NewTestCaseModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-300">
-                Platform
+                {t('testCases.platform')}
               </label>
               <select
                 className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
@@ -164,11 +192,11 @@ export default function NewTestCaseModal({
                 {...register('platform')}
               >
                 <option value="" disabled>
-                  Select
+                  {t('common.select')}
                 </option>
-                <option value="WEB">Web</option>
-                <option value="ANDROID">Android</option>
-                <option value="IOS">iOS</option>
+                <option value="WEB">{t('common.platforms.web')}</option>
+                <option value="ANDROID">{t('common.platforms.android')}</option>
+                <option value="IOS">{t('common.platforms.ios')}</option>
               </select>
               {errors.platform && (
                 <p className="mt-1 text-xs text-red-400">
@@ -179,7 +207,7 @@ export default function NewTestCaseModal({
 
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-300">
-                Type
+                {t('projects.type')}
               </label>
               <select
                 className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
@@ -187,13 +215,13 @@ export default function NewTestCaseModal({
                 {...register('type')}
               >
                 <option value="" disabled>
-                  Select
+                  {t('common.select')}
                 </option>
-                <option value="MANUAL">Manual</option>
-                <option value="E2E">E2E</option>
-                <option value="API">API</option>
-                <option value="UNIT">Unit</option>
-                <option value="PERFORMANCE">Performance</option>
+                <option value="MANUAL">{t('testCases.methods.manual')}</option>
+                <option value="E2E">{t('testCases.methods.e2e')}</option>
+                <option value="API">{t('testCases.methods.api')}</option>
+                <option value="UNIT">{t('testCases.methods.unit')}</option>
+                <option value="PERFORMANCE">{t('testCases.methods.performance')}</option>
               </select>
               {errors.type && (
                 <p className="mt-1 text-xs text-red-400">
@@ -205,32 +233,32 @@ export default function NewTestCaseModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Priority
+              {t('testCases.priority')}
             </label>
             <select
               className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               {...register('priority')}
             >
-              <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="HIGH">High</option>
-              <option value="CRITICAL">Critical</option>
+              <option value="LOW">{t('common.priorities.low')}</option>
+              <option value="MEDIUM">{t('common.priorities.medium')}</option>
+              <option value="HIGH">{t('common.priorities.high')}</option>
+              <option value="CRITICAL">{t('common.priorities.critical')}</option>
             </select>
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Link to Jira Task
+              {t('testCases.linkToJiraTask')}
             </label>
             <select
               className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               defaultValue=""
               {...register('jiraTaskId')}
             >
-              <option value="">None</option>
+              <option value="">{t('common.none')}</option>
               {jiraTasks?.map((task) => (
                 <option key={task.id} value={task.id}>
-                  {task.jiraKey} — {task.title}
+                  {t('testCases.jiraTaskOption', { key: task.jiraKey, title: task.title })}
                 </option>
               ))}
             </select>
@@ -241,7 +269,7 @@ export default function NewTestCaseModal({
             disabled={isPending}
             className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? 'Creating…' : 'Create Test Case'}
+            {isPending ? t('common.creating') : t('testCases.createTestCase')}
           </button>
         </form>
       </div>

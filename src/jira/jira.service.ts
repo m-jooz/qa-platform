@@ -666,38 +666,37 @@ export class JiraService {
     const passCount = testRuns.filter((r) => r.status === 'PASS').length;
     const failCount = testRuns.filter((r) => r.status === 'FAIL').length;
     const total = testRuns.length;
+    const dateStr = date.toLocaleDateString();
+    const truncate = (text: string) =>
+      text.length > 100 ? `${text.slice(0, 100)}…` : text;
 
     if (overallStatus === QaOverallStatus.PASS) {
       const lines = [
-        '✅ QA Approved',
-        `Tested by: ${submitterName} | ${date.toLocaleDateString()}`,
+        `✅ QA Passed | ${dateStr}`,
+        `Tester: ${submitterName}`,
+        `Tests: ${total} passed`,
         '',
-        'Test Summary:',
-        ...testRuns.map((r) => `✅ ${r.testCase.title} — PASS`),
+        ...testRuns.map((r) => `✅ ${r.testCase.title}`),
         '',
-        `All ${total} test cases passed successfully.`,
-        'Status changed to: Approved',
+        'Result: Approved ✓',
       ];
       return lines.join('\n');
     }
 
     const lines = [
-      '❌ QA Failed — Returned for fixes',
-      `Tested by: ${submitterName} | ${date.toLocaleDateString()}`,
+      `❌ QA Failed | ${dateStr}`,
+      `Tester: ${submitterName}`,
+      `Tests: ${passCount}✅ ${failCount}❌`,
       '',
-      'Test Results:',
-      ...testRuns.flatMap((r) => {
-        if (r.status === 'FAIL') {
-          return [
-            `❌ ${r.testCase.title} — FAIL`,
-            `   Issue: ${r.actualResult ?? 'N/A'}`,
-          ];
-        }
-        return [`✅ ${r.testCase.title} — PASS`];
-      }),
+      'Failed:',
+      ...testRuns
+        .filter((r) => r.status === 'FAIL')
+        .map(
+          (r) =>
+            `❌ ${r.testCase.title} → ${truncate(r.actualResult ?? 'N/A')}`,
+        ),
       '',
-      `${failCount} of ${total} test cases failed.`,
-      'Please review the issues above and fix before resubmitting.',
+      'Action: Please fix and resubmit',
     ];
     return lines.join('\n');
   }

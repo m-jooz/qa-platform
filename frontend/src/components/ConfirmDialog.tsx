@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 interface ConfirmDialogProps {
   title: string
   message: string
@@ -11,12 +13,14 @@ interface ConfirmDialogProps {
 export default function ConfirmDialog({
   title,
   message,
-  confirmLabel = 'Confirm',
+  confirmLabel,
   isDanger = true,
   isPending = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-2xl bg-gray-800 p-6 shadow-xl">
@@ -28,7 +32,7 @@ export default function ConfirmDialog({
             onClick={onCancel}
             className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-700"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -40,7 +44,7 @@ export default function ConfirmDialog({
                 : 'bg-indigo-600 hover:bg-indigo-500'
             }`}
           >
-            {isPending ? 'Please wait…' : confirmLabel}
+            {isPending ? t('common.pleaseWait') : confirmLabel ?? t('common.confirm')}
           </button>
         </div>
       </div>

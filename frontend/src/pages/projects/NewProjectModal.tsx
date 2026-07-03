@@ -3,26 +3,27 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { X } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import api from '../../api/client'
 import type { ApiResponse, Project } from '../../types'
 
-function buildProjectSchema(isEditMode: boolean) {
+function buildProjectSchema(isEditMode: boolean, t: (key: string) => string) {
   return z.object({
-    name: z.string().min(2, 'Name must be at least 2 characters'),
+    name: z.string().min(2, t('projects.nameTooShort')),
     type: z.enum(['WEB', 'ANDROID', 'IOS'], {
-      message: 'Select a project type',
+      message: t('projects.selectAType'),
     }),
     description: z.string().optional(),
-    jiraProjectKey: z.string().min(1, 'Jira project key is required'),
+    jiraProjectKey: z.string().min(1, t('projects.jiraProjectKeyRequired')),
     jiraBaseUrl: z
       .string()
-      .min(1, 'Jira base URL is required')
-      .url('Enter a valid URL'),
-    jiraEmail: z.email('Enter a valid email'),
+      .min(1, t('projects.jiraBaseUrlRequired'))
+      .url(t('projects.enterValidUrl')),
+    jiraEmail: z.email(t('projects.enterValidEmail')),
     jiraApiToken: isEditMode
       ? z.string().optional()
-      : z.string().min(1, 'Jira API token is required'),
+      : z.string().min(1, t('projects.jiraApiTokenRequired')),
   })
 }
 
@@ -37,6 +38,7 @@ export default function NewProjectModal({
   project,
   onClose,
 }: NewProjectModalProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const isEditMode = Boolean(project)
 
@@ -45,7 +47,7 @@ export default function NewProjectModal({
     handleSubmit,
     formState: { errors },
   } = useForm<ProjectFormValues>({
-    resolver: zodResolver(buildProjectSchema(isEditMode)),
+    resolver: zodResolver(buildProjectSchema(isEditMode, t)),
     defaultValues: project
       ? {
           name: project.name,
@@ -75,14 +77,14 @@ export default function NewProjectModal({
         queryClient.invalidateQueries({ queryKey: ['project', project!.id] })
       }
       toast.success(
-        isEditMode ? 'Project updated successfully' : 'Project created successfully',
+        isEditMode ? t('projects.projectUpdated') : t('projects.projectCreated'),
       )
       onClose()
     },
     onError: (error: any) => {
       const message =
         error.response?.data?.message ??
-        `Failed to ${isEditMode ? 'update' : 'create'} project`
+        (isEditMode ? t('projects.updateFailed') : t('projects.createFailed'))
       toast.error(Array.isArray(message) ? message[0] : message)
     },
   })
@@ -94,12 +96,12 @@ export default function NewProjectModal({
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-gray-800 p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">
-            {isEditMode ? 'Edit Project' : 'New Project'}
+            {isEditMode ? t('projects.editProject') : t('projects.newProject')}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="rounded-lg p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
           >
             <X size={20} />
@@ -113,12 +115,12 @@ export default function NewProjectModal({
         >
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Name
+              {t('projects.name')}
             </label>
             <input
               type="text"
               className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              placeholder="Mobile Banking App"
+              placeholder={t('projects.namePlaceholder')}
               {...register('name')}
             />
             {errors.name && (
@@ -130,7 +132,7 @@ export default function NewProjectModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Type
+              {t('projects.type')}
             </label>
             <select
               className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
@@ -138,11 +140,11 @@ export default function NewProjectModal({
               {...register('type')}
             >
               <option value="" disabled>
-                Select a type
+                {t('projects.selectAType')}
               </option>
-              <option value="WEB">Web</option>
-              <option value="ANDROID">Android</option>
-              <option value="IOS">iOS</option>
+              <option value="WEB">{t('common.platforms.web')}</option>
+              <option value="ANDROID">{t('common.platforms.android')}</option>
+              <option value="IOS">{t('common.platforms.ios')}</option>
             </select>
             {errors.type && (
               <p className="mt-1 text-xs text-red-400">
@@ -153,24 +155,24 @@ export default function NewProjectModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Description
+              {t('projects.description')}
             </label>
             <textarea
               rows={3}
               className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              placeholder="Optional description"
+              placeholder={t('projects.descriptionPlaceholder')}
               {...register('description')}
             />
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Jira Project Key
+              {t('projects.jiraProjectKey')}
             </label>
             <input
               type="text"
               className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              placeholder="PROJ"
+              placeholder={t('projects.jiraProjectKeyPlaceholder')}
               {...register('jiraProjectKey')}
             />
             {errors.jiraProjectKey && (
@@ -182,7 +184,7 @@ export default function NewProjectModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Jira Base URL
+              {t('projects.jiraBaseUrl')}
             </label>
             <input
               type="text"
@@ -199,7 +201,7 @@ export default function NewProjectModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Jira Account Email
+              {t('projects.jiraAccountEmail')}
             </label>
             <input
               type="email"
@@ -216,13 +218,13 @@ export default function NewProjectModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Jira API Token
+              {t('projects.jiraApiToken')}
             </label>
             <input
               type="password"
               className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               placeholder={
-                isEditMode ? 'Leave blank to keep existing' : '••••••••••••'
+                isEditMode ? t('projects.jiraApiTokenKeepExisting') : '••••••••••••'
               }
               {...register('jiraApiToken')}
             />
@@ -240,11 +242,11 @@ export default function NewProjectModal({
           >
             {isPending
               ? isEditMode
-                ? 'Saving…'
-                : 'Creating…'
+                ? t('common.saving')
+                : t('common.creating')
               : isEditMode
-                ? 'Save Changes'
-                : 'Create Project'}
+                ? t('projects.saveChanges')
+                : t('projects.createProject')}
           </button>
         </form>
       </div>

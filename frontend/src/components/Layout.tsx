@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import {
   Bell,
   BarChart2,
@@ -18,11 +19,11 @@ import { useAuthStore } from '../store/auth.store'
 import type { ApiResponse, Notification } from '../types'
 
 const NAV_ITEMS = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/projects', icon: FolderOpen, label: 'Projects' },
-  { to: '/test-cases', icon: ClipboardList, label: 'Test Cases' },
-  { to: '/test-runs', icon: PlayCircle, label: 'Test Runs' },
-  { to: '/reports', icon: BarChart2, label: 'Reports' },
+  { to: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
+  { to: '/projects', icon: FolderOpen, labelKey: 'nav.projects' },
+  { to: '/test-cases', icon: ClipboardList, labelKey: 'nav.testCases' },
+  { to: '/test-runs', icon: PlayCircle, labelKey: 'nav.testRuns' },
+  { to: '/reports', icon: BarChart2, labelKey: 'nav.reports' },
 ]
 
 interface NotificationsResponse {
@@ -32,11 +33,16 @@ interface NotificationsResponse {
 
 export default function Layout() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const queryClient = useQueryClient()
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
+
+  const toggleLanguage = () => {
+    i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')
+  }
 
   const { data: notificationsData } = useQuery({
     queryKey: ['notifications'],
@@ -83,8 +89,8 @@ export default function Layout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-950">
-      <aside className="flex w-64 flex-shrink-0 flex-col border-r border-gray-800 bg-gray-900">
+    <div className="flex min-h-screen bg-gray-950 rtl:flex-row-reverse">
+      <aside className="flex w-64 flex-shrink-0 flex-col border-e border-gray-800 bg-gray-900">
         <div className="px-6 py-5">
           <span className="text-lg font-semibold text-indigo-400">
             QA Platform
@@ -92,7 +98,7 @@ export default function Layout() {
         </div>
 
         <nav className="flex-1 space-y-1 px-3">
-          {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+          {NAV_ITEMS.map(({ to, icon: Icon, labelKey }) => (
             <NavLink
               key={to}
               to={to}
@@ -105,7 +111,7 @@ export default function Layout() {
               }
             >
               <Icon size={18} />
-              {label}
+              {t(labelKey)}
             </NavLink>
           ))}
         </nav>
@@ -122,7 +128,7 @@ export default function Layout() {
             }
           >
             <UserIcon size={18} />
-            Profile
+            {t('nav.profile')}
           </NavLink>
           {user?.role === 'ADMIN' && (
             <NavLink
@@ -136,7 +142,7 @@ export default function Layout() {
               }
             >
               <Users size={18} />
-              Users
+              {t('nav.users')}
             </NavLink>
           )}
         </div>
@@ -156,13 +162,21 @@ export default function Layout() {
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
           >
             <LogOut size={18} />
-            Logout
+            {t('common.logout')}
           </button>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 flex-shrink-0 items-center justify-end border-b border-gray-800 bg-gray-900 px-6">
+        <header className="flex h-14 flex-shrink-0 items-center justify-end gap-2 border-b border-gray-800 bg-gray-900 px-6">
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            aria-label="Toggle language"
+            className="rounded-lg border border-gray-700 px-2.5 py-1 text-xs font-semibold text-gray-300 hover:bg-gray-800 hover:text-white"
+          >
+            {i18n.language === 'ar' ? 'EN' : 'AR'}
+          </button>
           <div className="relative" ref={notifRef}>
           <button
             type="button"
@@ -172,23 +186,23 @@ export default function Layout() {
           >
             <Bell size={20} />
             {unreadCount > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+              <span className="absolute end-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </button>
 
           {isNotifOpen && (
-            <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
+            <div className="absolute end-0 top-12 z-50 w-80 rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
               <div className="border-b border-gray-800 px-4 py-3">
                 <p className="text-sm font-semibold text-white">
-                  Notifications
+                  {t('nav.notifications')}
                 </p>
               </div>
               <div className="max-h-96 overflow-y-auto">
                 {notifications.length === 0 ? (
                   <p className="px-4 py-8 text-center text-sm text-gray-500">
-                    No notifications
+                    {t('nav.noNotifications')}
                   </p>
                 ) : (
                   notifications.map((notification) => (
@@ -196,7 +210,7 @@ export default function Layout() {
                       key={notification.id}
                       type="button"
                       onClick={() => handleNotificationClick(notification)}
-                      className={`flex w-full flex-col gap-1 border-b border-gray-800 px-4 py-3 text-left last:border-b-0 hover:bg-gray-800 ${
+                      className={`flex w-full flex-col gap-1 border-b border-gray-800 px-4 py-3 text-start last:border-b-0 hover:bg-gray-800 ${
                         notification.isRead ? '' : 'bg-indigo-500/5'
                       }`}
                     >
@@ -208,7 +222,7 @@ export default function Layout() {
                           {notification.message}
                         </p>
                       </div>
-                      <p className="pl-3.5 text-xs text-gray-500">
+                      <p className="ps-3.5 text-xs text-gray-500">
                         {formatRelativeTime(notification.createdAt)}
                       </p>
                     </button>

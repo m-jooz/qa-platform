@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import api from '../../../api/client'
 import type { ApiResponse, JiraMember, JiraTransition } from '../../../types'
 
@@ -23,6 +24,7 @@ export default function SubmitFailModal({
   onClose,
   onSubmit,
 }: SubmitFailModalProps) {
+  const { t } = useTranslation()
   const [assigneeMode, setAssigneeMode] = useState<'auto' | 'manual'>(
     previousAssigneeId ? 'auto' : 'manual',
   )
@@ -72,12 +74,12 @@ export default function SubmitFailModal({
       <div className="w-full max-w-md rounded-2xl bg-gray-800 p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">
-            Submit QA Failure
+            {t('jira.submitFailure')}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="rounded-lg p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
           >
             <X size={20} />
@@ -87,7 +89,7 @@ export default function SubmitFailModal({
         <div className="space-y-4">
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-300">
-              Reassign to
+              {t('jira.reassignTo')}
             </label>
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm text-gray-300">
@@ -98,8 +100,8 @@ export default function SubmitFailModal({
                   onChange={() => setAssigneeMode('auto')}
                   className="h-4 w-4 border-gray-700 bg-gray-900 text-indigo-600 focus:ring-indigo-500"
                 />
-                Auto-assign to previous developer
-                {previousAssigneeName ? `: ${previousAssigneeName}` : ' (unavailable)'}
+                {t('jira.autoAssignPrevious')}
+                {previousAssigneeName ? `: ${previousAssigneeName}` : t('jira.autoAssignUnavailable')}
               </label>
               <label className="flex items-center gap-2 text-sm text-gray-300">
                 <input
@@ -108,7 +110,7 @@ export default function SubmitFailModal({
                   onChange={() => setAssigneeMode('manual')}
                   className="h-4 w-4 border-gray-700 bg-gray-900 text-indigo-600 focus:ring-indigo-500"
                 />
-                Choose a member
+                {t('jira.chooseMember')}
               </label>
             </div>
             {assigneeMode === 'manual' && (
@@ -117,7 +119,7 @@ export default function SubmitFailModal({
                 onChange={(e) => setManualAssigneeId(e.target.value)}
                 className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               >
-                <option value="">Select a member</option>
+                <option value="">{t('jira.selectMember')}</option>
                 {members?.map((member) => (
                   <option key={member.accountId} value={member.accountId}>
                     {member.displayName}
@@ -129,14 +131,14 @@ export default function SubmitFailModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Move Jira status to
+              {t('jira.moveStatusTo')}
             </label>
             <select
               value={transitionId}
               onChange={(e) => setTransitionId(e.target.value)}
               className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             >
-              <option value="">Select a status</option>
+              <option value="">{t('jira.selectStatus')}</option>
               {transitionsData?.transitions.map((transition) => (
                 <option key={transition.id} value={transition.id}>
                   {transition.to?.name ?? transition.name}
@@ -151,7 +153,7 @@ export default function SubmitFailModal({
             disabled={isPending || !transitionId}
             className="w-full rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? 'Submitting…' : 'Submit to Jira'}
+            {isPending ? t('common.submitting') : t('jira.submitToJira')}
           </button>
         </div>
       </div>

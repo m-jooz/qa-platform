@@ -4,39 +4,44 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Paperclip, X } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import api from '../../../api/client'
 import type { ApiResponse, TestRun } from '../../../types'
 
 const STATUS_OPTIONS = [
-  { value: 'PASS', label: 'Pass', className: 'border-green-500 bg-green-500/10 text-green-400' },
-  { value: 'FAIL', label: 'Fail', className: 'border-red-500 bg-red-500/10 text-red-400' },
-  { value: 'BLOCKED', label: 'Blocked', className: 'border-yellow-500 bg-yellow-500/10 text-yellow-400' },
-  { value: 'SKIPPED', label: 'Skipped', className: 'border-gray-500 bg-gray-500/10 text-gray-400' },
+  { value: 'PASS', labelKey: 'status.pass', className: 'border-green-500 bg-green-500/10 text-green-400' },
+  { value: 'FAIL', labelKey: 'status.fail', className: 'border-red-500 bg-red-500/10 text-red-400' },
+  { value: 'BLOCKED', labelKey: 'status.blocked', className: 'border-yellow-500 bg-yellow-500/10 text-yellow-400' },
+  { value: 'SKIPPED', labelKey: 'status.skipped', className: 'border-gray-500 bg-gray-500/10 text-gray-400' },
 ] as const
 
-const runTestSchema = z
-  .object({
-    status: z.enum(['PASS', 'FAIL', 'BLOCKED', 'SKIPPED'], {
-      message: 'Select a status',
-    }),
-    actualResult: z.string().min(1, 'Actual result is required'),
-    notes: z.string().optional(),
-    severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], {
-      message: 'Select a severity',
-    }),
-    isBug: z.boolean(),
-    bugDetails: z.string().optional(),
-  })
-  .refine(
-    (data) => !data.isBug || Boolean(data.bugDetails?.trim()),
-    {
-      message: 'Bug details are required when marking this as a bug',
-      path: ['bugDetails'],
-    },
-  )
+function buildRunTestSchema(t: (key: string) => string) {
+  return z
+    .object({
+      status: z.enum(['PASS', 'FAIL', 'BLOCKED', 'SKIPPED'], {
+        message: t('testRuns.selectAStatus'),
+      }),
+      actualResult: z.string().min(1, t('testRuns.actualResultRequired')),
+      notes: z.string().optional(),
+      severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], {
+        message: t('testRuns.selectASeverity'),
+      }),
+      isBug: z.boolean(),
+      bugDetails: z.string().optional(),
+    })
+    .refine(
+      (data) => !data.isBug || Boolean(data.bugDetails?.trim()),
+      {
+        message: t('testRuns.bugDetailsRequired'),
+        path: ['bugDetails'],
+      },
+    )
+}
 
-type RunTestFormValues = z.infer<typeof runTestSchema>
+type RunTestSchemaType = ReturnType<typeof buildRunTestSchema>
+
+type RunTestFormValues = z.infer<RunTestSchemaType>
 
 interface RunTestModalProps {
   testCaseId: string
@@ -47,6 +52,7 @@ export default function RunTestModal({
   testCaseId,
   onClose,
 }: RunTestModalProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [files, setFiles] = useState<File[]>([])
 
@@ -57,7 +63,7 @@ export default function RunTestModal({
     setValue,
     formState: { errors },
   } = useForm<RunTestFormValues>({
-    resolver: zodResolver(runTestSchema),
+    resolver: zodResolver(buildRunTestSchema(t)),
     defaultValues: { isBug: false },
   })
 
@@ -85,12 +91,12 @@ export default function RunTestModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['test-runs'] })
       queryClient.invalidateQueries({ queryKey: ['test-cases'] })
-      toast.success('Test run recorded')
+      toast.success(t('testRuns.testRunRecorded'))
       onClose()
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.message ?? 'Failed to record test run'
+        error.response?.data?.message ?? t('testRuns.recordFailed')
       toast.error(Array.isArray(message) ? message[0] : message)
     },
   })
@@ -105,11 +111,11 @@ export default function RunTestModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-gray-800 p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Run Test</h2>
+          <h2 className="text-lg font-semibold text-white">{t('testRuns.runTest')}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="rounded-lg p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
           >
             <X size={20} />
@@ -123,7 +129,7 @@ export default function RunTestModal({
         >
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-300">
-              Status
+              {t('common.status')}
             </label>
             <div className="grid grid-cols-4 gap-2">
               {STATUS_OPTIONS.map((option) => (
@@ -137,7 +143,7 @@ export default function RunTestModal({
                       : 'border-gray-700 bg-gray-900 text-gray-500 hover:text-gray-300'
                   }`}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </button>
               ))}
             </div>
@@ -150,7 +156,7 @@ export default function RunTestModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Actual Result
+              {t('testRuns.actualResult')}
             </label>
             <textarea
               rows={3}
@@ -166,19 +172,19 @@ export default function RunTestModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Notes
+              {t('testRuns.notes')}
             </label>
             <textarea
               rows={2}
               className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              placeholder="Optional"
+              placeholder={t('common.optional')}
               {...register('notes')}
             />
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Severity
+              {t('testRuns.severity')}
             </label>
             <select
               className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
@@ -186,12 +192,12 @@ export default function RunTestModal({
               {...register('severity')}
             >
               <option value="" disabled>
-                Select a severity
+                {t('testRuns.selectASeverity')}
               </option>
-              <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="HIGH">High</option>
-              <option value="CRITICAL">Critical</option>
+              <option value="LOW">{t('common.priorities.low')}</option>
+              <option value="MEDIUM">{t('common.priorities.medium')}</option>
+              <option value="HIGH">{t('common.priorities.high')}</option>
+              <option value="CRITICAL">{t('common.priorities.critical')}</option>
             </select>
             {errors.severity && (
               <p className="mt-1 text-xs text-red-400">
@@ -206,13 +212,13 @@ export default function RunTestModal({
               className="h-4 w-4 rounded border-gray-700 bg-gray-900 text-indigo-600 focus:ring-indigo-500"
               {...register('isBug')}
             />
-            This is a bug
+            {t('testRuns.thisIsABug')}
           </label>
 
           {isBug && (
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-300">
-                Bug Details
+                {t('testRuns.bugDetails')}
               </label>
               <textarea
                 rows={3}
@@ -229,13 +235,13 @@ export default function RunTestModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Attachments
+              {t('testRuns.attachments')}
             </label>
             <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-400 hover:border-indigo-500 hover:text-gray-300">
               <Paperclip size={16} />
               {files.length > 0
-                ? `${files.length} file${files.length === 1 ? '' : 's'} selected`
-                : 'Attach screenshots or videos'}
+                ? t('testRuns.filesSelected', { count: files.length })
+                : t('testRuns.attachFiles')}
               <input
                 type="file"
                 multiple
@@ -251,7 +257,7 @@ export default function RunTestModal({
             disabled={isPending}
             className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? 'Submitting…' : 'Submit Test Run'}
+            {isPending ? t('common.submitting') : t('testRuns.submitTestRun')}
           </button>
         </form>
       </div>

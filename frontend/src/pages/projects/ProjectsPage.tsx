@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { ClipboardList, FolderOpen, Pencil, Plus, Search } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+import {
+  ClipboardList,
+  FolderOpen,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from 'lucide-react'
+import toast from 'react-hot-toast'
 import api from '../../api/client'
 import { useDebouncedValue } from '../../lib/useDebouncedValue'
+import { useAuthStore } from '../../store/auth.store'
 import type { ApiResponse, PaginatedResult, Project } from '../../types'
 import Pagination from '../../components/Pagination'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import NewProjectModal from './NewProjectModal'
 
 const TYPE_BADGE_STYLES: Record<Project['type'], string> = {
@@ -17,10 +28,15 @@ const TYPE_BADGE_STYLES: Record<Project['type'], string> = {
 function ProjectCard({
   project,
   onEdit,
+  onDelete,
+  canDelete,
 }: {
   project: Project
   onEdit: (project: Project) => void
+  onDelete: (project: Project) => void
+  canDelete: boolean
 }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   return (
@@ -34,7 +50,7 @@ function ProjectCard({
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_BADGE_STYLES[project.type]}`}
           >
-            {project.type}
+            {t(`common.platforms.${project.type.toLowerCase()}`)}
           </span>
           <button
             type="button"
@@ -42,26 +58,39 @@ function ProjectCard({
               e.stopPropagation()
               onEdit(project)
             }}
-            aria-label="Edit project"
+            aria-label={t('projects.editProjectAria')}
             className="rounded-lg p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
           >
             <Pencil size={14} />
           </button>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(project)
+              }}
+              aria-label={t('projects.deleteProjectAria')}
+              className="rounded-lg p-1 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       </div>
 
       <p className="mb-6 line-clamp-2 text-sm text-gray-400">
-        {project.description || 'No description'}
+        {project.description || t('projects.noDescription')}
       </p>
 
       <div className="flex items-center gap-4 text-sm text-gray-500">
         <span className="flex items-center gap-1.5">
           <FolderOpen size={16} />
-          {project.stats.jiraTasksCount} Jira Tasks
+          {project.stats.jiraTasksCount} {t('projects.jiraTasks')}
         </span>
         <span className="flex items-center gap-1.5">
           <ClipboardList size={16} />
-          {project.stats.testCasesCount} Test Cases
+          {project.stats.testCasesCount} {t('projects.testCases')}
         </span>
       </div>
     </div>
@@ -86,15 +115,19 @@ function ProjectCardSkeleton() {
 }
 
 export default function ProjectsPage() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search)
 
   useEffect(() => {
-    document.title = 'Projects — QA Platform'
-  }, [])
+    document.title = `${t('projects.title')} — QA Platform`
+  }, [t])
 
   useEffect(() => {
     setPage(1)
@@ -112,13 +145,27 @@ export default function ProjectsPage() {
   })
   const projects = result?.data
 
+  const { mutate: deleteProject, isPending: isDeleting } = useMutation({
+    mutationFn: (projectId: string) => api.delete(`/projects/${projectId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      toast.success(t('projects.projectDeleted'))
+      setDeletingProject(null)
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.message ?? t('projects.deleteFailed')
+      toast.error(Array.isArray(message) ? message[0] : message)
+    },
+  })
+
   return (
     <div className="px-8 py-8">
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Projects</h1>
+          <h1 className="text-2xl font-semibold text-white">{t('projects.title')}</h1>
           <p className="mt-1 text-sm text-gray-400">
-            Manage your testing projects
+            {t('projects.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -131,7 +178,7 @@ export default function ProjectsPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search projects…"
+              placeholder={t('projects.searchPlaceholder')}
               className="w-56 rounded-lg border border-gray-700 bg-gray-900 py-2 pl-9 pr-3 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             />
           </div>
@@ -141,7 +188,7 @@ export default function ProjectsPage() {
             className="flex flex-shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
           >
             <Plus size={18} />
-            New Project
+            {t('projects.newProject')}
           </button>
         </div>
       </div>
@@ -158,7 +205,7 @@ export default function ProjectsPage() {
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 py-24 text-center">
           <Search size={40} className="mb-4 text-gray-600" />
           <p className="text-gray-400">
-            No projects match "{debouncedSearch}"
+            {t('projects.noProjectsMatch', { search: debouncedSearch })}
           </p>
         </div>
       )}
@@ -166,13 +213,13 @@ export default function ProjectsPage() {
       {!isLoading && projects && projects.length === 0 && !debouncedSearch && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 py-24 text-center">
           <FolderOpen size={40} className="mb-4 text-gray-600" />
-          <p className="mb-4 text-gray-400">No projects yet</p>
+          <p className="mb-4 text-gray-400">{t('projects.noProjectsYet')}</p>
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
           >
-            Create your first project
+            {t('projects.createFirst')}
           </button>
         </div>
       )}
@@ -185,6 +232,8 @@ export default function ProjectsPage() {
                 key={project.id}
                 project={project}
                 onEdit={setEditingProject}
+                onDelete={setDeletingProject}
+                canDelete={user?.role === 'ADMIN'}
               />
             ))}
           </div>
@@ -204,6 +253,18 @@ export default function ProjectsPage() {
         <NewProjectModal
           project={editingProject}
           onClose={() => setEditingProject(null)}
+        />
+      )}
+
+      {deletingProject && (
+        <ConfirmDialog
+          title={t('projects.deleteProjectTitle', { name: deletingProject.name })}
+          message={t('projects.deleteProjectMessage')}
+          confirmLabel={t('common.delete')}
+          isDanger
+          isPending={isDeleting}
+          onConfirm={() => deleteProject(deletingProject.id)}
+          onCancel={() => setDeletingProject(null)}
         />
       )}
     </div>

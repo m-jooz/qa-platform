@@ -3,16 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useTranslation } from 'react-i18next'
 import api from '../../api/client'
 import { useAuthStore } from '../../store/auth.store'
 import type { ApiResponse, User } from '../../types'
 
-const loginSchema = z.object({
-  email: z.string().min(1, 'Email is required').email('Enter a valid email'),
-  password: z.string().min(1, 'Password is required'),
-})
+function buildLoginSchema(t: (key: string) => string) {
+  return z.object({
+    email: z.string().min(1, t('auth.emailRequired')).email(t('auth.enterValidEmail')),
+    password: z.string().min(1, t('auth.passwordRequired')),
+  })
+}
 
-type LoginFormValues = z.infer<typeof loginSchema>
+type LoginFormValues = z.infer<ReturnType<typeof buildLoginSchema>>
 
 interface LoginResult {
   accessToken: string
@@ -20,6 +23,7 @@ interface LoginResult {
 }
 
 export default function LoginPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const login = useAuthStore((state) => state.login)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -30,7 +34,7 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(buildLoginSchema(t)),
   })
 
   const onSubmit = async (values: LoginFormValues) => {
@@ -45,7 +49,7 @@ export default function LoginPage() {
       navigate('/dashboard', { replace: true })
     } catch (error: any) {
       const message =
-        error.response?.data?.message ?? 'Invalid email or password'
+        error.response?.data?.message ?? t('auth.loginFailed')
       setServerError(Array.isArray(message) ? message[0] : message)
     } finally {
       setIsSubmitting(false)
@@ -60,7 +64,7 @@ export default function LoginPage() {
             QA Platform
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            Sign in to manage your test suites
+            {t('auth.loginSubtitle')}
           </p>
         </div>
 
@@ -80,7 +84,7 @@ export default function LoginPage() {
               htmlFor="email"
               className="mb-1 block text-sm font-medium text-slate-300"
             >
-              Email
+              {t('auth.email')}
             </label>
             <input
               id="email"
@@ -102,7 +106,7 @@ export default function LoginPage() {
               htmlFor="password"
               className="mb-1 block text-sm font-medium text-slate-300"
             >
-              Password
+              {t('auth.password')}
             </label>
             <input
               id="password"
@@ -124,7 +128,7 @@ export default function LoginPage() {
             disabled={isSubmitting}
             className="w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? 'Signing in…' : 'Sign in'}
+            {isSubmitting ? t('auth.loggingIn') : t('auth.signIn')}
           </button>
         </form>
       </div>

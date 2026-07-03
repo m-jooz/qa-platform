@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
 import api from '../../api/client'
 import { PLATFORM_BADGE } from '../../lib/badges'
@@ -12,15 +13,16 @@ import TestRunsTab from './tabs/TestRunsTab'
 import ReportsTab from './tabs/ReportsTab'
 
 const TABS = [
-  { key: 'jira', label: 'Jira Tasks' },
-  { key: 'testcases', label: 'Test Cases' },
-  { key: 'testruns', label: 'Test Runs' },
-  { key: 'reports', label: 'Reports' },
+  { key: 'jira', labelKey: 'jira.tasks' },
+  { key: 'testcases', labelKey: 'testCases.title' },
+  { key: 'testruns', labelKey: 'testRuns.title' },
+  { key: 'reports', labelKey: 'reports.title' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
 
 export default function ProjectDetailPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabKey>('jira')
@@ -49,7 +51,7 @@ export default function ProjectDetailPage() {
         className="mb-6 flex items-center gap-1 text-sm text-gray-400 hover:text-white"
       >
         <ArrowLeft size={16} />
-        Projects
+        {t('nav.projects')}
       </button>
 
       {isLoading && (
@@ -85,7 +87,7 @@ export default function ProjectDetailPage() {
                     : 'border-transparent text-gray-400 hover:text-gray-200'
                 }`}
               >
-                {tab.label}
+                {t(tab.labelKey)}
               </button>
             ))}
           </div>

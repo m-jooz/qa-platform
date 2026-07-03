@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { ClipboardList, Plus, Search } from 'lucide-react'
 import api from '../../../api/client'
 import { PLATFORM_BADGE, PRIORITY_BADGE } from '../../../lib/badges'
@@ -17,7 +18,29 @@ interface TestCasesTabProps {
   projectId: string
 }
 
+const PLATFORM_KEY: Record<string, string> = {
+  WEB: 'common.platforms.web',
+  ANDROID: 'common.platforms.android',
+  IOS: 'common.platforms.ios',
+}
+
+const TYPE_KEY: Record<string, string> = {
+  MANUAL: 'testCases.methods.manual',
+  E2E: 'testCases.methods.e2e',
+  API: 'testCases.methods.api',
+  UNIT: 'testCases.methods.unit',
+  PERFORMANCE: 'testCases.methods.performance',
+}
+
+const PRIORITY_KEY: Record<string, string> = {
+  LOW: 'common.priorities.low',
+  MEDIUM: 'common.priorities.medium',
+  HIGH: 'common.priorities.high',
+  CRITICAL: 'common.priorities.critical',
+}
+
 export default function TestCasesTab({ projectId }: TestCasesTabProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
   const [runTestCaseId, setRunTestCaseId] = useState<string | null>(null)
@@ -83,7 +106,7 @@ export default function TestCasesTab({ projectId }: TestCasesTabProps) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search test cases…"
+              placeholder={t('testCases.searchPlaceholder')}
               className="w-52 rounded-lg border border-gray-700 bg-gray-900 py-2 pl-9 pr-3 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             />
           </div>
@@ -92,33 +115,33 @@ export default function TestCasesTab({ projectId }: TestCasesTabProps) {
             onChange={(e) => setPlatform(e.target.value)}
             className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           >
-            <option value="">All Platforms</option>
-            <option value="WEB">Web</option>
-            <option value="ANDROID">Android</option>
-            <option value="IOS">iOS</option>
+            <option value="">{t('common.platforms.allPlatforms')}</option>
+            <option value="WEB">{t('common.platforms.web')}</option>
+            <option value="ANDROID">{t('common.platforms.android')}</option>
+            <option value="IOS">{t('common.platforms.ios')}</option>
           </select>
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
             className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           >
-            <option value="">All Priorities</option>
-            <option value="LOW">Low</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="HIGH">High</option>
-            <option value="CRITICAL">Critical</option>
+            <option value="">{t('common.priorities.allPriorities')}</option>
+            <option value="LOW">{t('common.priorities.low')}</option>
+            <option value="MEDIUM">{t('common.priorities.medium')}</option>
+            <option value="HIGH">{t('common.priorities.high')}</option>
+            <option value="CRITICAL">{t('common.priorities.critical')}</option>
           </select>
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
             className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           >
-            <option value="">All Types</option>
-            <option value="MANUAL">Manual</option>
-            <option value="E2E">E2E</option>
-            <option value="API">API</option>
-            <option value="UNIT">Unit</option>
-            <option value="PERFORMANCE">Performance</option>
+            <option value="">{t('testCases.allTypes')}</option>
+            <option value="MANUAL">{t('testCases.methods.manual')}</option>
+            <option value="E2E">{t('testCases.methods.e2e')}</option>
+            <option value="API">{t('testCases.methods.api')}</option>
+            <option value="UNIT">{t('testCases.methods.unit')}</option>
+            <option value="PERFORMANCE">{t('testCases.methods.performance')}</option>
           </select>
         </div>
 
@@ -128,7 +151,7 @@ export default function TestCasesTab({ projectId }: TestCasesTabProps) {
           className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
         >
           <Plus size={18} />
-          New Test Case
+          {t('testCases.newTestCaseButton')}
         </button>
       </div>
 
@@ -137,20 +160,20 @@ export default function TestCasesTab({ projectId }: TestCasesTabProps) {
       {isError && <ErrorState onRetry={() => refetch()} />}
 
       {!isLoading && !isError && testCases && testCases.length === 0 && hasActiveFilters && (
-        <EmptyState icon={Search} title="No test cases match your filters" />
+        <EmptyState icon={Search} title={t('testCases.noTestCasesMatch')} />
       )}
 
       {!isLoading && !isError && testCases && testCases.length === 0 && !hasActiveFilters && (
         <EmptyState
           icon={ClipboardList}
-          title="No test cases yet"
+          title={t('testCases.noTestCasesYet')}
           action={
             <button
               type="button"
               onClick={() => setIsNewModalOpen(true)}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
             >
-              Create your first test case
+              {t('testCases.createFirst')}
             </button>
           }
         />
@@ -162,12 +185,12 @@ export default function TestCasesTab({ projectId }: TestCasesTabProps) {
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-900 text-xs uppercase text-gray-500">
                 <tr>
-                  <th className="px-4 py-3">Title</th>
-                  <th className="px-4 py-3">Platform</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Priority</th>
-                  <th className="px-4 py-3">Jira Task</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-3">{t('testCases.testCaseTitle')}</th>
+                  <th className="px-4 py-3">{t('testCases.platform')}</th>
+                  <th className="px-4 py-3">{t('projects.type')}</th>
+                  <th className="px-4 py-3">{t('testCases.priority')}</th>
+                  <th className="px-4 py-3">{t('jira.tasks')}</th>
+                  <th className="px-4 py-3">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700 bg-gray-800">
@@ -178,17 +201,17 @@ export default function TestCasesTab({ projectId }: TestCasesTabProps) {
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${PLATFORM_BADGE[testCase.platform]}`}
                       >
-                        {testCase.platform}
+                        {t(PLATFORM_KEY[testCase.platform])}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-400">
-                      {testCase.type}
+                      {t(TYPE_KEY[testCase.type])}
                     </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_BADGE[testCase.priority]}`}
                       >
-                        {testCase.priority}
+                        {t(PRIORITY_KEY[testCase.priority])}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-400">
@@ -201,7 +224,7 @@ export default function TestCasesTab({ projectId }: TestCasesTabProps) {
                           onClick={() => setRunTestCaseId(testCase.id)}
                           className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500"
                         >
-                          Run
+                          {t('testCases.run')}
                         </button>
                         <button
                           type="button"
@@ -210,7 +233,7 @@ export default function TestCasesTab({ projectId }: TestCasesTabProps) {
                           }
                           className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
                         >
-                          View
+                          {t('common.view')}
                         </button>
                       </div>
                     </td>

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ExternalLink, PlayCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import api from '../../api/client'
-import { jiraStatusBadgeClass, TEST_RUN_STATUS_BADGE } from '../../lib/badges'
+import { jiraStatusBadgeClass } from '../../lib/badges'
 import type {
   ApiResponse,
   JiraTask,
@@ -16,8 +17,54 @@ import type {
 import ConfirmDialog from '../../components/ConfirmDialog'
 import TableSkeleton from '../projects/components/TableSkeleton'
 import ErrorState from '../projects/components/ErrorState'
-import RunTestModal from '../projects/modals/RunTestModal'
 import SubmitFailModal from './modals/SubmitFailModal'
+
+type DraftStatus = 'PASS' | 'FAIL' | 'BLOCKED' | 'SKIPPED'
+
+interface DraftResult {
+  status?: DraftStatus
+  actualResult: string
+  notes: string
+}
+
+const STATUS_OPTIONS: {
+  value: DraftStatus
+  labelKey: string
+  activeClassName: string
+}[] = [
+  {
+    value: 'PASS',
+    labelKey: 'status.pass',
+    activeClassName: 'bg-green-600 text-white border-green-600',
+  },
+  {
+    value: 'FAIL',
+    labelKey: 'status.fail',
+    activeClassName: 'bg-red-600 text-white border-red-600',
+  },
+  {
+    value: 'BLOCKED',
+    labelKey: 'status.blocked',
+    activeClassName: 'bg-yellow-600 text-white border-yellow-600',
+  },
+  {
+    value: 'SKIPPED',
+    labelKey: 'status.skipped',
+    activeClassName: 'bg-gray-600 text-white border-gray-600',
+  },
+]
+
+const TYPE_LABEL_KEY: Record<TestCase['type'], string> = {
+  MANUAL: 'testCases.methods.manual',
+  E2E: 'testCases.methods.e2e',
+  API: 'testCases.methods.api',
+  UNIT: 'testCases.methods.unit',
+  PERFORMANCE: 'testCases.methods.performance',
+}
+
+function requiresActualResult(status?: DraftStatus) {
+  return status === 'FAIL' || status === 'BLOCKED'
+}
 
 export default function TaskTestingPage() {
   const { projectId, taskId } = useParams<{
@@ -26,8 +73,9 @@ export default function TaskTestingPage() {
   }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
 
-  const [runTestCaseId, setRunTestCaseId] = useState<string | null>(null)
+  const [drafts, setDrafts] = useState<Record<string, DraftResult>>({})
   const [showConfirmPass, setShowConfirmPass] = useState(false)
   const [showFailModal, setShowFailModal] = useState(false)
   const [submissionResult, setSubmissionResult] = useState<QaSubmission | null>(
@@ -67,32 +115,35 @@ export default function TaskTestingPage() {
     enabled: Boolean(taskId),
   })
 
-  const latestRunQueries = useQueries({
-    queries: (testCases ?? []).map((testCase) => ({
-      queryKey: ['test-runs', testCase.id, 'latest'],
-      queryFn: async () => {
-        const { data } = await api.get<ApiResponse<PaginatedResult<TestRun>>>(
-          '/test-runs',
-          { params: { testCaseId: testCase.id, limit: 1 } },
-        )
-        return data.data.data[0] ?? null
-      },
-      enabled: Boolean(testCases),
-    })),
-  })
-
   const isLoading = isLoadingTask || isLoadingTestCases
   const isError = isErrorTask || isErrorTestCases
 
-  const rows = (testCases ?? []).map((testCase, index) => ({
-    testCase,
-    latestRun: latestRunQueries[index]?.data ?? null,
-  }))
+  const getDraft = (testCaseId: string): DraftResult =>
+    drafts[testCaseId] ?? { actualResult: '', notes: '' }
 
-  const allHaveRun =
-    rows.length > 0 && rows.every((row) => row.latestRun !== null)
-  const anyFail = rows.some((row) => row.latestRun?.status === 'FAIL')
-  const completedCount = rows.filter((row) => row.latestRun !== null).length
+  const updateDraft = (testCaseId: string, patch: Partial<DraftResult>) => {
+    setDrafts((prev) => ({
+      ...prev,
+      [testCaseId]: { ...getDraft(testCaseId), ...patch },
+    }))
+  }
+
+  const rows = testCases ?? []
+  const isRowComplete = (testCase: TestCase) => {
+    const draft = getDraft(testCase.id)
+    if (!draft.status) return false
+    if (requiresActualResult(draft.status) && !draft.actualResult.trim()) {
+      return false
+    }
+    return true
+  }
+
+  const completedCount = rows.filter(isRowComplete).length
+  const allComplete = rows.length > 0 && completedCount === rows.length
+  const anyFail = rows.some((tc) => getDraft(tc.id).status === 'FAIL')
+  const progressPct = rows.length
+    ? Math.round((completedCount / rows.length) * 100)
+    : 0
 
   const submitMutation = useMutation({
     mutationFn: async (payload: {
@@ -100,11 +151,27 @@ export default function TaskTestingPage() {
       jiraAssigneeId?: string
       transitionId?: string
     }) => {
+      const createdRuns = await Promise.all(
+        rows.map(async (testCase) => {
+          const draft = getDraft(testCase.id)
+          const { data } = await api.post<ApiResponse<TestRun>>(
+            '/test-runs',
+            {
+              testCaseId: testCase.id,
+              status: draft.status,
+              actualResult: draft.actualResult || undefined,
+              notes: draft.notes || undefined,
+            },
+          )
+          return data.data
+        }),
+      )
+
       const { data } = await api.post<ApiResponse<QaSubmission>>(
         `/jira/${projectId}/tasks/${taskId}/submit`,
         {
           overallStatus: payload.overallStatus,
-          testRunIds: rows.map((row) => row.latestRun!.id),
+          testRunIds: createdRuns.map((run) => run.id),
           jiraAssigneeId: payload.jiraAssigneeId,
           transitionId: payload.transitionId,
         },
@@ -114,14 +181,15 @@ export default function TaskTestingPage() {
     onSuccess: (submission) => {
       queryClient.invalidateQueries({ queryKey: ['qa-overview'] })
       queryClient.invalidateQueries({ queryKey: ['jira-tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['test-runs'] })
       setSubmissionResult(submission)
       setShowConfirmPass(false)
       setShowFailModal(false)
-      toast.success('QA result submitted to Jira')
+      toast.success(t('jira.submissionSuccess'))
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.message ?? 'Failed to submit QA result'
+        error.response?.data?.message ?? t('jira.submissionFailed')
       toast.error(Array.isArray(message) ? message[0] : message)
     },
   })
@@ -132,23 +200,27 @@ export default function TaskTestingPage() {
         <div className="w-full max-w-md rounded-2xl border border-gray-700 bg-gray-800 p-8 text-center">
           <h1 className="mb-2 text-xl font-semibold text-white">
             {submissionResult.overallStatus === 'PASS'
-              ? '✅ QA Approved'
-              : '❌ QA Failed — Returned for fixes'}
+              ? `✅ ${t('jira.qaApprovedTitle')}`
+              : `❌ ${t('jira.qaFailedTitle')}`}
           </h1>
           <p className="mb-6 text-sm text-gray-400">
-            {submissionResult.passCount}/{submissionResult.totalCount} test
-            cases passed
+            {t('jira.passCountLine', {
+              passCount: submissionResult.passCount,
+              totalCount: submissionResult.totalCount,
+            })}
             {submissionResult.labelAdded &&
-              ` · Label "${submissionResult.labelAdded}" added`}
+              t('jira.labelAddedSuffix', { label: submissionResult.labelAdded })}
             {submissionResult.jiraStatusAfter &&
-              ` · Jira status: ${submissionResult.jiraStatusAfter}`}
+              t('jira.jiraStatusSuffix', {
+                status: submissionResult.jiraStatusAfter,
+              })}
           </p>
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
             className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
           >
-            Back to Dashboard
+            {t('jira.backToDashboard')}
           </button>
         </div>
       </div>
@@ -156,7 +228,7 @@ export default function TaskTestingPage() {
   }
 
   return (
-    <div className="flex flex-col px-8 py-8 pb-28">
+    <div className="flex flex-col px-8 py-8 pb-32">
       {isLoading && <TableSkeleton columns={5} />}
       {isError && (
         <ErrorState
@@ -170,7 +242,7 @@ export default function TaskTestingPage() {
       {!isLoading && !isError && task && (
         <div className="flex flex-col gap-6 lg:flex-row">
           <div className="lg:w-2/5">
-            <div className="rounded-xl border border-gray-700 bg-gray-800 p-5">
+            <div className="sticky top-4 rounded-xl border border-gray-700 bg-gray-800 p-5">
               <div className="mb-3 flex items-center gap-2">
                 <span className="inline-flex rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400 border border-indigo-500/30">
                   {task.jiraKey}
@@ -178,7 +250,7 @@ export default function TaskTestingPage() {
                 <span
                   className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${jiraStatusBadgeClass(task.currentStatus)}`}
                 >
-                  {task.currentStatus ?? 'Unknown'}
+                  {task.currentStatus ?? t('common.unknown')}
                 </span>
               </div>
               <h1 className="mb-3 text-lg font-semibold text-white">
@@ -190,9 +262,13 @@ export default function TaskTestingPage() {
                 </p>
               )}
               <div className="space-y-1 text-sm text-gray-400">
-                <p>Assignee: {task.currentAssignee ?? 'Unassigned'}</p>
+                <p>
+                  {t('jira.assignee')}: {task.currentAssignee ?? t('common.unassigned')}
+                </p>
                 {task.qaRequestedByName && (
-                  <p>Sent to QA by: {task.qaRequestedByName}</p>
+                  <p>
+                    {t('jira.sentToQaBy')}: {task.qaRequestedByName}
+                  </p>
                 )}
               </div>
               {task.jiraUrl && (
@@ -202,7 +278,7 @@ export default function TaskTestingPage() {
                   rel="noreferrer"
                   className="mt-4 inline-flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300"
                 >
-                  View in Jira <ExternalLink size={14} />
+                  {t('jira.viewInJira')} <ExternalLink size={14} />
                 </a>
               )}
             </div>
@@ -213,57 +289,94 @@ export default function TaskTestingPage() {
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 py-20 text-center">
                 <PlayCircle size={36} className="mb-4 text-gray-600" />
                 <p className="text-gray-400">
-                  No test cases linked to this task yet.
+                  {t('jira.noTestCasesLinked')}
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {rows.map(({ testCase, latestRun }) => (
-                  <div
-                    key={testCase.id}
-                    className="rounded-xl border border-gray-700 bg-gray-800 p-4"
-                  >
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-white">
-                        {testCase.title}
-                      </p>
-                      {latestRun ? (
-                        <span
-                          className={`inline-flex flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${TEST_RUN_STATUS_BADGE[latestRun.status]}`}
-                        >
-                          {latestRun.status}
-                        </span>
-                      ) : (
-                        <span className="inline-flex flex-shrink-0 rounded-full bg-gray-500/10 px-2 py-0.5 text-xs font-medium text-gray-400 border border-gray-500/30">
-                          NOT RUN
-                        </span>
-                      )}
-                    </div>
-                    <details className="mb-2 text-xs text-gray-400">
-                      <summary className="cursor-pointer text-gray-500 hover:text-gray-300">
-                        Steps
-                      </summary>
-                      <p className="mt-1 whitespace-pre-wrap">
-                        {testCase.steps}
-                      </p>
-                    </details>
-                    <p className="mb-2 text-xs text-gray-500">
-                      Expected: {testCase.expectedResult}
-                    </p>
-                    {latestRun?.actualResult && (
-                      <p className="mb-2 text-xs text-gray-400">
-                        Actual: {latestRun.actualResult}
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setRunTestCaseId(testCase.id)}
-                      className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
+              <div className="space-y-4">
+                {rows.map((testCase) => {
+                  const draft = getDraft(testCase.id)
+                  const needsActual = requiresActualResult(draft.status)
+                  return (
+                    <div
+                      key={testCase.id}
+                      className="rounded-xl border border-gray-700 bg-gray-800 p-4"
                     >
-                      {latestRun ? 'Run Again' : 'Run'}
-                    </button>
-                  </div>
-                ))}
+                      <div className="mb-2 flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium text-white">
+                          {testCase.title}
+                        </p>
+                        <span className="inline-flex flex-shrink-0 rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400 border border-indigo-500/30">
+                          {t(TYPE_LABEL_KEY[testCase.type])}
+                        </span>
+                      </div>
+                      <details className="mb-2 text-xs text-gray-400">
+                        <summary className="cursor-pointer text-gray-500 hover:text-gray-300">
+                          {t('jira.steps')}
+                        </summary>
+                        <p className="mt-1 whitespace-pre-wrap">
+                          {testCase.steps}
+                        </p>
+                      </details>
+                      <p className="mb-3 text-xs text-gray-500">
+                        {t('jira.expectedPrefix', { expected: testCase.expectedResult })}
+                      </p>
+
+                      <div className="mb-3 grid grid-cols-4 gap-2">
+                        {STATUS_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() =>
+                              updateDraft(testCase.id, { status: option.value })
+                            }
+                            className={`rounded-lg border px-2 py-2 text-sm font-semibold transition-colors ${
+                              draft.status === option.value
+                                ? option.activeClassName
+                                : 'border-gray-700 bg-gray-900 text-gray-500 hover:text-gray-300'
+                            }`}
+                          >
+                            {t(option.labelKey)}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="mb-2">
+                        <label className="mb-1 block text-xs font-medium text-gray-400">
+                          {t('testCases.actualResult')}
+                          {needsActual && (
+                            <span className="text-red-400"> *</span>
+                          )}
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={draft.actualResult}
+                          onChange={(e) =>
+                            updateDraft(testCase.id, {
+                              actualResult: e.target.value,
+                            })
+                          }
+                          className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-400">
+                          {t('testCases.notes')}
+                        </label>
+                        <textarea
+                          rows={1}
+                          value={draft.notes}
+                          onChange={(e) =>
+                            updateDraft(testCase.id, { notes: e.target.value })
+                          }
+                          placeholder={t('common.optional')}
+                          className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -272,36 +385,40 @@ export default function TaskTestingPage() {
 
       {!isLoading && !isError && task && rows.length > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-700 bg-gray-900 px-8 py-4">
-          <div className="mx-auto flex max-w-6xl items-center justify-between">
-            <p className="text-sm text-gray-400">
-              {completedCount} of {rows.length} test cases completed
-            </p>
+          <div className="mx-auto flex max-w-6xl items-center gap-6">
+            <div className="flex-1">
+              <p className="mb-1.5 text-sm text-gray-400">
+                {t('jira.completedCount', {
+                  completed: completedCount,
+                  total: rows.length,
+                })}
+              </p>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-800">
+                <div
+                  className="h-full rounded-full bg-indigo-500 transition-all"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+            </div>
             <button
               type="button"
-              disabled={!allHaveRun}
+              disabled={!allComplete}
               onClick={() =>
                 anyFail ? setShowFailModal(true) : setShowConfirmPass(true)
               }
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex-shrink-0 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Submit QA Result
+              {t('common.submit')}
             </button>
           </div>
         </div>
       )}
 
-      {runTestCaseId && (
-        <RunTestModal
-          testCaseId={runTestCaseId}
-          onClose={() => setRunTestCaseId(null)}
-        />
-      )}
-
       {showConfirmPass && (
         <ConfirmDialog
-          title="All passed!"
-          message="Submit to Jira? This will add a comment, apply the QA-Approved label, and move the task forward."
-          confirmLabel="Submit to Jira"
+          title={t('jira.allPassedTitle')}
+          message={t('jira.allPassedMessage')}
+          confirmLabel={t('jira.submitToJira')}
           isDanger={false}
           isPending={submitMutation.isPending}
           onConfirm={() => submitMutation.mutate({ overallStatus: 'PASS' })}

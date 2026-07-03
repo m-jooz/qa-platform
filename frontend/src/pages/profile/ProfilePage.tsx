@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { KeyRound, Mail, User as UserIcon } from 'lucide-react'
 import api from '../../api/client'
@@ -15,25 +16,28 @@ const ROLE_BADGE: Record<string, string> = {
   VIEWER: 'bg-gray-500/10 text-gray-400 border border-gray-500/30',
 }
 
-const passwordSchema = z
-  .object({
-    oldPassword: z.string().min(1, 'Current password is required'),
-    newPassword: z.string().min(8, 'New password must be at least 8 characters'),
-    confirmPassword: z.string().min(1, 'Please confirm your new password'),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  })
+function buildPasswordSchema(t: (key: string) => string) {
+  return z
+    .object({
+      oldPassword: z.string().min(1, t('profile.currentPasswordRequired')),
+      newPassword: z.string().min(8, t('profile.newPasswordMinLength')),
+      confirmPassword: z.string().min(1, t('profile.confirmPasswordRequired')),
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+      message: t('profile.passwordsDoNotMatch'),
+      path: ['confirmPassword'],
+    })
+}
 
-type PasswordFormValues = z.infer<typeof passwordSchema>
+type PasswordFormValues = z.infer<ReturnType<typeof buildPasswordSchema>>
 
 export default function ProfilePage() {
+  const { t } = useTranslation()
   const user = useAuthStore((state) => state.user)
 
   useEffect(() => {
-    document.title = 'Profile — QA Platform'
-  }, [])
+    document.title = `${t('profile.title')} — QA Platform`
+  }, [t])
 
   const {
     register,
@@ -41,7 +45,7 @@ export default function ProfilePage() {
     reset,
     formState: { errors },
   } = useForm<PasswordFormValues>({
-    resolver: zodResolver(passwordSchema),
+    resolver: zodResolver(buildPasswordSchema(t)),
   })
 
   const { mutate, isPending } = useMutation({
@@ -51,12 +55,12 @@ export default function ProfilePage() {
         newPassword: values.newPassword,
       }),
     onSuccess: () => {
-      toast.success('Password changed successfully')
+      toast.success(t('profile.passwordChanged'))
       reset()
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.message ?? 'Failed to change password'
+        error.response?.data?.message ?? t('profile.changeFailed')
       toast.error(Array.isArray(message) ? message[0] : message)
     },
   })
@@ -65,12 +69,12 @@ export default function ProfilePage() {
 
   return (
     <div className="px-8 py-8">
-      <h1 className="mb-8 text-2xl font-semibold text-white">Profile</h1>
+      <h1 className="mb-8 text-2xl font-semibold text-white">{t('profile.title')}</h1>
 
       <div className="mx-auto max-w-lg space-y-6">
         <div className="rounded-xl border border-gray-800 bg-gray-900 p-6">
           <h2 className="mb-4 text-sm font-medium uppercase text-gray-500">
-            Account Info
+            {t('profile.accountInfo')}
           </h2>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
@@ -86,7 +90,7 @@ export default function ProfilePage() {
               <span
                 className={`rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_BADGE[user.role]}`}
               >
-                {user.role}
+                {t(`users.roles.${user.role.toLowerCase()}`)}
               </span>
             </div>
           </div>
@@ -94,7 +98,7 @@ export default function ProfilePage() {
 
         <div className="rounded-xl border border-gray-800 bg-gray-900 p-6">
           <h2 className="mb-4 text-sm font-medium uppercase text-gray-500">
-            Change Password
+            {t('profile.changePassword')}
           </h2>
           <form
             onSubmit={handleSubmit((values) => mutate(values))}
@@ -103,7 +107,7 @@ export default function ProfilePage() {
           >
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-300">
-                Current Password
+                {t('profile.currentPassword')}
               </label>
               <input
                 type="password"
@@ -119,7 +123,7 @@ export default function ProfilePage() {
 
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-300">
-                New Password
+                {t('profile.newPassword')}
               </label>
               <input
                 type="password"
@@ -135,7 +139,7 @@ export default function ProfilePage() {
 
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-300">
-                Confirm New Password
+                {t('profile.confirmNewPassword')}
               </label>
               <input
                 type="password"
@@ -154,7 +158,7 @@ export default function ProfilePage() {
               disabled={isPending}
               className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isPending ? 'Changing…' : 'Change Password'}
+              {isPending ? t('profile.changing') : t('profile.changePassword')}
             </button>
           </form>
         </div>

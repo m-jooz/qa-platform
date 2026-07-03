@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { ExternalLink, X } from 'lucide-react'
 import { jiraStatusBadgeClass } from '../../../lib/badges'
 import { formatRelativeTime } from '../../../lib/formatRelativeTime'
@@ -9,6 +10,7 @@ interface JiraTaskPanelProps {
 }
 
 export default function JiraTaskPanel({ task, onClose }: JiraTaskPanelProps) {
+  const { t } = useTranslation()
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div
@@ -23,7 +25,7 @@ export default function JiraTaskPanel({ task, onClose }: JiraTaskPanelProps) {
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="rounded-lg p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
           >
             <X size={20} />
@@ -36,25 +38,25 @@ export default function JiraTaskPanel({ task, onClose }: JiraTaskPanelProps) {
 
         <dl className="space-y-4 text-sm">
           <div>
-            <dt className="mb-1 text-gray-500">Status</dt>
+            <dt className="mb-1 text-gray-500">{t('common.status')}</dt>
             <dd>
               <span
                 className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${jiraStatusBadgeClass(task.currentStatus)}`}
               >
-                {task.currentStatus ?? 'Unknown'}
+                {task.currentStatus ?? t('common.unknown')}
               </span>
             </dd>
           </div>
 
           <div>
-            <dt className="mb-1 text-gray-500">Assignee</dt>
+            <dt className="mb-1 text-gray-500">{t('jira.assignee')}</dt>
             <dd className="text-gray-300">
-              {task.currentAssignee ?? 'Unassigned'}
+              {task.currentAssignee ?? t('common.unassigned')}
             </dd>
           </div>
 
           <div>
-            <dt className="mb-1 text-gray-500">Last Updated</dt>
+            <dt className="mb-1 text-gray-500">{t('jira.lastUpdated')}</dt>
             <dd className="text-gray-300">
               {formatRelativeTime(task.jiraUpdatedAt)}
             </dd>
@@ -62,7 +64,7 @@ export default function JiraTaskPanel({ task, onClose }: JiraTaskPanelProps) {
 
           {task.jiraUrl && (
             <div>
-              <dt className="mb-1 text-gray-500">Jira Link</dt>
+              <dt className="mb-1 text-gray-500">{t('jira.jiraLink')}</dt>
               <dd>
                 <a
                   href={task.jiraUrl}
@@ -70,7 +72,7 @@ export default function JiraTaskPanel({ task, onClose }: JiraTaskPanelProps) {
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300"
                 >
-                  Open in Jira
+                  {t('jira.openInJira')}
                   <ExternalLink size={14} />
                 </a>
               </dd>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ExternalLink, Play } from 'lucide-react'
 import api from '../../api/client'
 import { PLATFORM_BADGE, PRIORITY_BADGE, TEST_RUN_STATUS_BADGE } from '../../lib/badges'
@@ -34,15 +35,16 @@ function InfoCard({ label, value }: { label: string; value: string }) {
 }
 
 function BugCell({ testRun }: { testRun: TestRun }) {
+  const { t } = useTranslation()
   if (!testRun.isBug) return <span className="text-gray-500">-</span>
   if (testRun.bugStatus === 'PENDING') {
-    return <span className="text-orange-400">🐛 Pending</span>
+    return <span className="text-orange-400">🐛 {t('testRuns.bugPending')}</span>
   }
   if (testRun.bugStatus === 'APPROVED') {
-    return <span className="text-green-400">✅ Approved</span>
+    return <span className="text-green-400">✅ {t('testRuns.bugApproved')}</span>
   }
   if (testRun.bugStatus === 'REJECTED') {
-    return <span className="text-red-400">❌ Rejected</span>
+    return <span className="text-red-400">❌ {t('testRuns.bugRejected')}</span>
   }
   return <span className="text-gray-500">-</span>
 }
@@ -53,14 +55,15 @@ function truncate(text: string | null, length: number): string {
 }
 
 export default function TestCaseDetailPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [isRunModalOpen, setIsRunModalOpen] = useState(false)
   const [runsPage, setRunsPage] = useState(1)
 
   useEffect(() => {
-    if (id) document.title = 'Test Case — QA Platform'
-  }, [id])
+    if (id) document.title = `${t('testCases.detailTitle')} — QA Platform`
+  }, [id, t])
 
   const {
     data: testCase,
@@ -114,7 +117,7 @@ export default function TestCaseDetailPage() {
         className="mb-6 flex items-center gap-1 text-sm text-gray-400 hover:text-white"
       >
         <ArrowLeft size={16} />
-        Back
+        {t('testCases.back')}
       </button>
 
       {isLoading && (
@@ -136,17 +139,17 @@ export default function TestCaseDetailPage() {
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${PLATFORM_BADGE[testCase.platform]}`}
                 >
-                  {testCase.platform}
+                  {t(`common.platforms.${testCase.platform.toLowerCase()}`)}
                 </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_BADGE[testCase.type]}`}
                 >
-                  {testCase.type}
+                  {t(`testCases.methods.${testCase.type.toLowerCase()}`)}
                 </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_BADGE[testCase.priority]}`}
                 >
-                  {testCase.priority}
+                  {t(`common.priorities.${testCase.priority.toLowerCase()}`)}
                 </span>
               </div>
               {testCase.jiraTask ? (
@@ -161,7 +164,7 @@ export default function TestCaseDetailPage() {
                 </a>
               ) : (
                 <span className="text-sm text-gray-500">
-                  No Jira task linked
+                  {t('testCases.noJiraTaskLinked')}
                 </span>
               )}
             </div>
@@ -172,22 +175,22 @@ export default function TestCaseDetailPage() {
               className="flex flex-shrink-0 items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-500"
             >
               <Play size={18} />
-              Run Test
+              {t('testCases.run')}
             </button>
           </div>
 
           <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <InfoCard label="Created by" value={testCase.creator.name} />
+            <InfoCard label={t('testCases.createdBy')} value={testCase.creator.name} />
             <InfoCard
-              label="Created at"
+              label={t('testCases.createdAt')}
               value={new Date(testCase.createdAt).toLocaleDateString()}
             />
-            <InfoCard label="Project" value={testCase.project.name} />
+            <InfoCard label={t('testCases.project')} value={testCase.project.name} />
           </div>
 
           <section className="mb-8">
             <h2 className="mb-3 text-lg font-semibold text-white">
-              Test Steps
+              {t('testCases.testSteps')}
             </h2>
             <ol className="space-y-2">
               {steps.map((step, index) => (
@@ -206,7 +209,7 @@ export default function TestCaseDetailPage() {
 
           <section className="mb-8">
             <h2 className="mb-3 text-lg font-semibold text-white">
-              Expected Result
+              {t('testCases.expectedResult')}
             </h2>
             <div className="rounded-lg border-l-4 border-green-500 bg-gray-800 p-4 text-sm text-white">
               {testCase.expectedResult}
@@ -215,7 +218,7 @@ export default function TestCaseDetailPage() {
 
           <section className="mb-8">
             <h2 className="mb-3 text-lg font-semibold text-white">
-              Test Run History
+              {t('testCases.testRunHistory')}
             </h2>
 
             {isLoadingRuns && <TableSkeleton columns={6} />}
@@ -225,7 +228,7 @@ export default function TestCaseDetailPage() {
             {!isLoadingRuns && !isErrorRuns && testRuns && testRuns.length === 0 && (
               <EmptyState
                 icon={Play}
-                title="No test runs yet. Click Run Test to start."
+                title={t('testCases.noTestRunsClickRunTest')}
               />
             )}
 
@@ -235,12 +238,12 @@ export default function TestCaseDetailPage() {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-gray-900 text-xs uppercase text-gray-500">
                     <tr>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Actual Result</th>
-                      <th className="px-4 py-3">Severity</th>
-                      <th className="px-4 py-3">Bug?</th>
-                      <th className="px-4 py-3">Executed By</th>
-                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3">{t('common.status')}</th>
+                      <th className="px-4 py-3">{t('testCases.actualResult')}</th>
+                      <th className="px-4 py-3">{t('testRuns.severity')}</th>
+                      <th className="px-4 py-3">{t('testRuns.bug')}</th>
+                      <th className="px-4 py-3">{t('testRuns.executedBy')}</th>
+                      <th className="px-4 py-3">{t('common.date')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700 bg-gray-800">
@@ -250,7 +253,7 @@ export default function TestCaseDetailPage() {
                           <span
                             className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${TEST_RUN_STATUS_BADGE[run.status]}`}
                           >
-                            {run.status}
+                            {t(`status.${run.status.toLowerCase()}`)}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-gray-300">
@@ -285,7 +288,7 @@ export default function TestCaseDetailPage() {
           {attachments.length > 0 && (
             <section>
               <h2 className="mb-3 text-lg font-semibold text-white">
-                Attachments
+                {t('testCases.attachments')}
               </h2>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {attachments.map((attachment) => {
@@ -300,7 +303,7 @@ export default function TestCaseDetailPage() {
                     >
                       <img
                         src={url}
-                        alt="Test run attachment"
+                        alt={t('testCases.attachmentAlt')}
                         className="h-32 w-full object-cover"
                       />
                     </a>

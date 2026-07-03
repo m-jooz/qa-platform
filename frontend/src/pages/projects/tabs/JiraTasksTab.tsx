@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { ClipboardList, Loader2, RefreshCw, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../../api/client'
-import {
-  jiraStatusBadgeClass,
-  QA_STATUS_BADGE,
-  QA_STATUS_LABEL,
-} from '../../../lib/badges'
+import { jiraStatusBadgeClass, QA_STATUS_BADGE } from '../../../lib/badges'
 import { formatRelativeTime } from '../../../lib/formatRelativeTime'
 import { useDebouncedValue } from '../../../lib/useDebouncedValue'
 import type { ApiResponse, JiraTask, PaginatedResult } from '../../../types'
@@ -22,7 +19,15 @@ interface JiraTasksTabProps {
   projectId: string
 }
 
+const QA_STATUS_KEY: Record<string, string> = {
+  NOT_STARTED: 'status.notStarted',
+  IN_PROGRESS: 'status.inProgress',
+  SUBMITTED: 'status.submitted',
+  FAILED: 'status.failed',
+}
+
 export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [selectedTask, setSelectedTask] = useState<JiraTask | null>(null)
@@ -55,11 +60,11 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
     mutationFn: () => api.post(`/jira/${projectId}/sync`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jira-tasks', projectId] })
-      toast.success('Synced successfully')
+      toast.success(t('jira.syncSuccess'))
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.message ?? 'Failed to sync from Jira'
+        error.response?.data?.message ?? t('jira.syncFailed')
       toast.error(Array.isArray(message) ? message[0] : message)
     },
   })
@@ -89,7 +94,7 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search Jira tasks…"
+            placeholder={t('jira.searchPlaceholder')}
             className="w-56 rounded-lg border border-gray-700 bg-gray-900 py-2 pl-9 pr-3 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           />
         </div>
@@ -104,7 +109,7 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
           ) : (
             <RefreshCw size={16} />
           )}
-          Sync from Jira
+          {t('jira.syncFromJira')}
         </button>
       </div>
 
@@ -113,13 +118,13 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
       {isError && <ErrorState onRetry={() => refetch()} />}
 
       {!isLoading && !isError && tasks && tasks.length === 0 && debouncedSearch && (
-        <EmptyState icon={Search} title="No Jira tasks match your search" />
+        <EmptyState icon={Search} title={t('jira.noTasksMatch')} />
       )}
 
       {!isLoading && !isError && tasks && tasks.length === 0 && !debouncedSearch && (
         <EmptyState
           icon={ClipboardList}
-          title="No Jira tasks yet. Click Sync to import tasks."
+          title={t('jira.noTasksYet')}
         />
       )}
 
@@ -130,13 +135,13 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
             <thead className="bg-gray-900 text-xs uppercase text-gray-500">
               <tr>
                 <th className="w-2" />
-                <th className="px-4 py-3">Key</th>
-                <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Assignee</th>
-                <th className="px-4 py-3">Sent to QA by</th>
-                <th className="px-4 py-3">QA Status</th>
-                <th className="px-4 py-3">Last Updated</th>
+                <th className="px-4 py-3">{t('jira.key')}</th>
+                <th className="px-4 py-3">{t('common.title')}</th>
+                <th className="px-4 py-3">{t('common.status')}</th>
+                <th className="px-4 py-3">{t('jira.assignee')}</th>
+                <th className="px-4 py-3">{t('jira.sentToQaBy')}</th>
+                <th className="px-4 py-3">{t('jira.qaStatus')}</th>
+                <th className="px-4 py-3">{t('jira.lastUpdated')}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -162,11 +167,11 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${jiraStatusBadgeClass(task.currentStatus)}`}
                     >
-                      {task.currentStatus ?? 'Unknown'}
+                      {task.currentStatus ?? t('common.unknown')}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-400">
-                    {task.currentAssignee ?? 'Unassigned'}
+                    {task.currentAssignee ?? t('common.unassigned')}
                   </td>
                   <td className="px-4 py-3 text-gray-400">
                     {task.qaRequestedByName ?? '-'}
@@ -175,7 +180,7 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${QA_STATUS_BADGE[task.qaStatus]}`}
                     >
-                      {QA_STATUS_LABEL[task.qaStatus]}
+                      {t(QA_STATUS_KEY[task.qaStatus])}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-400">
@@ -191,7 +196,7 @@ export default function JiraTasksTab({ projectId }: JiraTasksTabProps) {
                         }}
                         className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
                       >
-                        Start Testing
+                        {t('jira.startTesting')}
                       </button>
                     )}
                   </td>

@@ -3,15 +3,18 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { X } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import api from '../../../api/client'
 
-const approveBugSchema = z.object({
-  jiraReassignTo: z.string().min(1, 'Jira assignee ID is required'),
-  jiraNewStatus: z.string().min(1, 'Jira transition ID is required'),
-})
+function buildApproveBugSchema(t: (key: string) => string) {
+  return z.object({
+    jiraReassignTo: z.string().min(1, t('testRuns.jiraAssigneeIdRequired')),
+    jiraNewStatus: z.string().min(1, t('testRuns.jiraTransitionIdRequired')),
+  })
+}
 
-type ApproveBugFormValues = z.infer<typeof approveBugSchema>
+type ApproveBugFormValues = z.infer<ReturnType<typeof buildApproveBugSchema>>
 
 interface ApproveBugModalProps {
   testRunId: string
@@ -22,6 +25,7 @@ export default function ApproveBugModal({
   testRunId,
   onClose,
 }: ApproveBugModalProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const {
@@ -29,7 +33,7 @@ export default function ApproveBugModal({
     handleSubmit,
     formState: { errors },
   } = useForm<ApproveBugFormValues>({
-    resolver: zodResolver(approveBugSchema),
+    resolver: zodResolver(buildApproveBugSchema(t)),
   })
 
   const { mutate, isPending } = useMutation({
@@ -38,12 +42,12 @@ export default function ApproveBugModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['test-runs'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      toast.success('Bug approved and synced to Jira')
+      toast.success(t('testRuns.bugApprovedSynced'))
       onClose()
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.message ?? 'Failed to approve bug'
+        error.response?.data?.message ?? t('testRuns.approveFailed')
       toast.error(Array.isArray(message) ? message[0] : message)
     },
   })
@@ -54,11 +58,11 @@ export default function ApproveBugModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl bg-gray-800 p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Approve Bug</h2>
+          <h2 className="text-lg font-semibold text-white">{t('testRuns.approveBug')}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="rounded-lg p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
           >
             <X size={20} />
@@ -72,7 +76,7 @@ export default function ApproveBugModal({
         >
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Jira Assignee ID
+              {t('testRuns.jiraAssigneeId')}
             </label>
             <input
               type="text"
@@ -89,7 +93,7 @@ export default function ApproveBugModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              Jira Transition ID
+              {t('testRuns.jiraTransitionId')}
             </label>
             <input
               type="text"
@@ -109,7 +113,7 @@ export default function ApproveBugModal({
             disabled={isPending}
             className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? 'Approving…' : 'Approve'}
+            {isPending ? t('testRuns.approving') : t('common.approve')}
           </button>
         </form>
       </div>
