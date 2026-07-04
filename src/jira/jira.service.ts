@@ -666,59 +666,117 @@ export class JiraService {
     return { transitions, suggestedInProgressId };
   }
 
+  private static readonly COMMENT_SEPARATOR =
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+
+  private static readonly STATUS_RESULT_LABEL: Record<string, string> = {
+    PASS: '✅ PASS',
+    FAIL: '❌ FAIL',
+    BLOCKED: '⚠️ BLOCKED',
+    SKIPPED: '⏭️ SKIPPED',
+  };
+
+  private async getSubmissionRound(taskId: string): Promise<number> {
+    const count = await this.prisma.qaSubmission.count({
+      where: { jiraTaskId: taskId },
+    });
+    return count + 1;
+  }
+
   private buildQaSubmissionComment(
     overallStatus: QaOverallStatus,
     testRuns: Array<{
       status: string;
       actualResult: string | null;
-      testCase: { title: string };
+      notes: string | null;
+      testCase: { title: string; platform: string; type: string };
     }>,
     submitterName: string,
     date: Date,
+    roundNumber: number,
   ): string {
     const passCount = testRuns.filter((r) => r.status === 'PASS').length;
     const failCount = testRuns.filter((r) => r.status === 'FAIL').length;
     const total = testRuns.length;
     const dateStr = date.toLocaleDateString();
-    const truncate = (text: string) =>
-      text.length > 100 ? `${text.slice(0, 100)}…` : text;
+    const sep = JiraService.COMMENT_SEPARATOR;
+    const platform = testRuns[0]?.testCase.platform ?? 'WEB';
+    const suggestions = testRuns
+      .map((r) => r.notes?.trim())
+      .filter((note): note is string => Boolean(note));
 
     if (overallStatus === QaOverallStatus.PASS) {
       const lines = [
-        `✅ QA Passed | ${dateStr}`,
-        `Tester: ${submitterName}`,
-        `Tests: ${total} passed`,
+        sep,
+        `✅ QA APPROVED — Round #${roundNumber}`,
+        sep,
+        `Tested by: ${submitterName} | ${dateStr} | ${platform}`,
         '',
-        ...testRuns.map((r) => `✅ ${r.testCase.title}`),
+        `TEST RESULTS (${passCount}/${total} passed):`,
         '',
-        'Result: Approved ✓',
+        ...testRuns.flatMap((r, index) => [
+          `  #${index + 1} · ${r.testCase.title}`,
+          `      ${r.testCase.type} | ${r.testCase.platform}`,
+          `      Result: ${JiraService.STATUS_RESULT_LABEL[r.status] ?? r.status}`,
+          '',
+        ]),
+        sep,
+        'Status: APPROVED ✓',
+        'All test cases passed successfully.',
       ];
-      return lines.join('\n');
+      return lines.join('\n').replace(/\n{3,}/g, '\n\n');
     }
 
     const lines = [
-      `❌ QA Failed | ${dateStr}`,
-      `Tester: ${submitterName}`,
-      `Tests: ${passCount}✅ ${failCount}❌`,
+      sep,
+      `❌ QA FAILED — Round #${roundNumber}`,
+      sep,
+      `Tested by: ${submitterName} | ${dateStr} | ${platform}`,
+      `Summary: ${passCount} passed · ${failCount} failed`,
       '',
-      'Failed:',
-      ...testRuns
-        .filter((r) => r.status === 'FAIL')
-        .map(
-          (r) =>
-            `❌ ${r.testCase.title} → ${truncate(r.actualResult ?? 'N/A')}`,
-        ),
+      'TEST RESULTS:',
       '',
-      'Action: Please fix and resubmit',
+      ...testRuns.flatMap((r, index) => {
+        const resultLine = `      Result: ${JiraService.STATUS_RESULT_LABEL[r.status] ?? r.status}`;
+        if (r.status === 'FAIL' || r.status === 'BLOCKED') {
+          return [
+            `  #${index + 1} · ${r.testCase.title}`,
+            resultLine,
+            `      Issue: ${r.actualResult ?? 'N/A'}`,
+            '',
+          ];
+        }
+        return [`  #${index + 1} · ${r.testCase.title}`, resultLine, ''];
+      }),
+      sep,
     ];
-    return lines.join('\n');
+
+    if (suggestions.length > 0) {
+      lines.push(
+        'SUGGESTIONS:',
+        ...suggestions.map((note) => `  → ${note}`),
+        '',
+      );
+    }
+
+    lines.push('Action Required: Please fix the issues above and resubmit for QA.');
+
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n');
   }
 
   private async loadAndValidateTestRuns(taskId: string, testRunIds: string[]) {
     const testRuns = await this.prisma.testRun.findMany({
       where: { id: { in: testRunIds } },
       include: {
-        testCase: { select: { id: true, title: true, jiraTaskId: true } },
+        testCase: {
+          select: {
+            id: true,
+            title: true,
+            jiraTaskId: true,
+            platform: true,
+            type: true,
+          },
+        },
         executor: { select: { id: true, name: true } },
       },
     });
@@ -762,12 +820,14 @@ export class JiraService {
       where: { id: userId },
       select: { name: true },
     });
+    const roundNumber = await this.getSubmissionRound(taskId);
 
     const comment = this.buildQaSubmissionComment(
       overallStatus,
       testRuns,
       submitter?.name ?? 'Unknown',
       new Date(),
+      roundNumber,
     );
 
     return {
@@ -800,6 +860,7 @@ export class JiraService {
       where: { id: userId },
       select: { name: true },
     });
+    const roundNumber = await this.getSubmissionRound(taskId);
 
     const submittedAt = new Date();
     const commentBody =
@@ -809,6 +870,7 @@ export class JiraService {
         testRuns,
         submitter?.name ?? 'Unknown',
         submittedAt,
+        roundNumber,
       );
 
     const jiraKey = jiraTask.jiraKey;

@@ -5,7 +5,11 @@ import { ExternalLink, Pencil, PlayCircle, RotateCw, Trash2 } from 'lucide-react
 import toast from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
 import api from '../../api/client'
-import { jiraStatusBadgeClass, TEST_RUN_STATUS_BADGE } from '../../lib/badges'
+import {
+  jiraStatusBadgeClass,
+  PLATFORM_BADGE,
+  PRIORITY_BADGE,
+} from '../../lib/badges'
 import { invalidateQaData } from '../../lib/invalidateQaData'
 import { useAuthStore } from '../../store/auth.store'
 import type {
@@ -74,8 +78,23 @@ const TYPE_LABEL_KEY: Record<TestCase['type'], string> = {
   PERFORMANCE: 'testCases.methods.performance',
 }
 
+const PRIORITY_EMOJI: Record<TestCase['priority'], string> = {
+  CRITICAL: '🔴',
+  HIGH: '🟠',
+  MEDIUM: '🟡',
+  LOW: '🔵',
+}
+
 function requiresActualResult(status?: DraftStatus) {
   return status === 'FAIL' || status === 'BLOCKED'
+}
+
+function truncate(text: string, max: number) {
+  return text.length > max ? `${text.slice(0, max)}…` : text
+}
+
+function countSteps(steps: string) {
+  return steps.split('\n').filter((line) => line.trim().length > 0).length
 }
 
 export default function TaskTestingPage() {
@@ -164,7 +183,7 @@ export default function TaskTestingPage() {
       const { data } = await api.get<
         ApiResponse<PaginatedResult<QaSubmissionSummary>>
       >('/reports/submissions', {
-        params: { projectId, jiraTaskId: taskId, limit: 1 },
+        params: { projectId, jiraTaskId: taskId, limit: 100 },
       })
       return data.data
     },
@@ -172,7 +191,10 @@ export default function TaskTestingPage() {
   })
 
   const previousSubmissionsCount = taskSubmissions?.total ?? 0
-  const latestSubmission = taskSubmissions?.data[0] ?? null
+  const submissionHistory = [...(taskSubmissions?.data ?? [])].sort(
+    (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime(),
+  )
+  const latestSubmission = submissionHistory[submissionHistory.length - 1] ?? null
   const currentRunNumber = previousSubmissionsCount + 1
 
   const isLoading = isLoadingTask || isLoadingTestCases
@@ -421,6 +443,32 @@ export default function TaskTestingPage() {
                 </span>
               </div>
             )}
+
+            {submissionHistory.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-700 pt-3 text-xs">
+                <span className="mr-1 text-gray-500">{t('jira.roundHistory')}:</span>
+                {submissionHistory.map((submission, index) => (
+                  <span
+                    key={submission.id}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 ${
+                      submission.overallStatus === 'PASS'
+                        ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                        : 'border-red-500/30 bg-red-500/10 text-red-400'
+                    }`}
+                  >
+                    {t('jira.roundLabel', { n: index + 1 })} —{' '}
+                    {submission.overallStatus === 'PASS' ? '✅' : '❌'}{' '}
+                    {t(`status.${submission.overallStatus.toLowerCase()}`)} —{' '}
+                    {new Date(submission.submittedAt).toLocaleDateString()} —{' '}
+                    {t('jira.roundBy', { tester: submission.user.name })}
+                  </span>
+                ))}
+                <span className="inline-flex items-center gap-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-indigo-400">
+                  {t('jira.roundLabel', { n: submissionHistory.length + 1 })} —{' '}
+                  {t('jira.roundInProgress')}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-6 lg:flex-row">
@@ -477,83 +525,97 @@ export default function TaskTestingPage() {
                     return (
                       <div
                         key={testCase.id}
-                        className="rounded-xl border border-gray-700 bg-gray-800 p-4"
+                        className="rounded-xl border border-gray-700 bg-gray-800 p-3"
                       >
-                        <div className="mb-2 flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex flex-shrink-0 rounded-full bg-gray-700 px-2 py-1 text-xs font-mono font-semibold text-gray-300">
+                        <div className="mb-1.5 flex items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                            <span className="inline-flex flex-shrink-0 rounded-full bg-gray-700 px-2 py-0.5 font-mono font-semibold text-gray-300">
                               {`TC-${String(index + 1).padStart(3, '0')}`}
                             </span>
-                            <p className="text-sm font-medium text-white">
-                              {testCase.title}
-                            </p>
-                          </div>
-                          <div className="flex flex-shrink-0 items-center gap-1">
-                            <span className="inline-flex rounded-full bg-indigo-500/10 px-2 py-1 text-xs font-medium text-indigo-400 border border-indigo-500/30">
+                            <span className="text-gray-500">•</span>
+                            <span className="text-gray-400">
                               {t(TYPE_LABEL_KEY[testCase.type])}
                             </span>
-                            {canModify && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingTestCase(testCase)}
-                                  aria-label={t('common.edit')}
-                                  className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white"
-                                >
-                                  <Pencil size={14} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setDeletingTestCase(testCase)}
-                                  aria-label={t('common.delete')}
-                                  className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-red-400"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </>
-                            )}
+                            <span className="text-gray-500">•</span>
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 font-medium ${PLATFORM_BADGE[testCase.platform]}`}
+                            >
+                              {testCase.platform}
+                            </span>
+                            <span className="text-gray-500">•</span>
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${PRIORITY_BADGE[testCase.priority]}`}
+                            >
+                              {PRIORITY_EMOJI[testCase.priority]} {testCase.priority}
+                            </span>
                           </div>
+                          {canModify && (
+                            <div className="flex flex-shrink-0 items-center gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => setEditingTestCase(testCase)}
+                                aria-label={t('common.edit')}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeletingTestCase(testCase)}
+                                aria-label={t('common.delete')}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-red-400"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          )}
                         </div>
 
-                        <p className="mb-2 text-xs text-gray-500">
-                          {t('jira.runNumberLabel', { n: previousRunsTotal + 1 })}
+                        <p className="mb-2 text-sm font-medium text-white">
+                          {testCase.title}
                         </p>
 
-                        {previousRunsTotal > 0 && latestRun ? (
-                          <details className="mb-3 rounded-lg border border-gray-700 bg-gray-900 p-2.5 text-xs" open>
-                            <summary className="cursor-pointer font-medium text-gray-400 hover:text-gray-200">
-                              {t('jira.previousResult', { n: previousRunsTotal })}
+                        <div className="mb-2 border-t border-gray-700" />
+
+                        <div className="mb-2 flex items-start justify-between gap-3 text-xs">
+                          <details className="group flex-1 text-gray-400">
+                            <summary className="cursor-pointer select-none text-gray-500 transition-colors hover:text-gray-300">
+                              <span className="inline-block transition-transform group-open:rotate-90">
+                                ▶
+                              </span>{' '}
+                              {t('jira.stepsCount', { count: countSteps(testCase.steps) })}
                             </summary>
-                            <div className="mt-2 flex items-start gap-2">
-                              <span
-                                className={`inline-flex flex-shrink-0 rounded-full px-2 py-1 text-xs font-medium ${TEST_RUN_STATUS_BADGE[latestRun.status]}`}
-                              >
-                                {t(`status.${latestRun.status.toLowerCase()}`)}
-                              </span>
-                              <span className="text-gray-400">
-                                {latestRun.actualResult ?? t('common.none')}
-                              </span>
-                            </div>
+                            <p className="mt-1.5 whitespace-pre-wrap transition-all">
+                              {testCase.steps}
+                            </p>
                           </details>
+                          <details className="group flex-1 text-right text-gray-400">
+                            <summary className="cursor-pointer select-none text-gray-500 transition-colors hover:text-gray-300">
+                              {t('jira.expectedResultLabel')}{' '}
+                              <span className="inline-block transition-transform group-open:rotate-90">
+                                ▶
+                              </span>
+                            </summary>
+                            <p className="mt-1.5 whitespace-pre-wrap text-left transition-all">
+                              {testCase.expectedResult}
+                            </p>
+                          </details>
+                        </div>
+
+                        {previousRunsTotal > 0 && latestRun ? (
+                          <p className="mb-2 truncate text-xs text-gray-500">
+                            {t('jira.previousResult', {
+                              status: `${latestRun.status === 'PASS' ? '✅' : latestRun.status === 'FAIL' ? '❌' : latestRun.status === 'BLOCKED' ? '⚠️' : '⏭️'} ${t(`status.${latestRun.status.toLowerCase()}`)}`,
+                              result: truncate(latestRun.actualResult ?? t('common.none'), 40),
+                            })}
+                          </p>
                         ) : (
-                          <p className="mb-3 text-xs text-gray-600">
+                          <p className="mb-2 text-xs text-gray-600">
                             {t('jira.noPreviousResults')}
                           </p>
                         )}
 
-                        <details className="mb-2 text-xs text-gray-400">
-                          <summary className="cursor-pointer text-gray-500 hover:text-gray-300">
-                            {t('jira.steps')}
-                          </summary>
-                          <p className="mt-1 whitespace-pre-wrap">
-                            {testCase.steps}
-                          </p>
-                        </details>
-                        <p className="mb-3 text-xs text-gray-500">
-                          {t('jira.expectedPrefix', { expected: testCase.expectedResult })}
-                        </p>
-
-                        <div className="mb-3 grid grid-cols-4 gap-2">
+                        <div className="mb-2 grid grid-cols-4 gap-2">
                           {STATUS_OPTIONS.map((option) => (
                             <button
                               key={option.value}
@@ -561,57 +623,53 @@ export default function TaskTestingPage() {
                               onClick={() =>
                                 updateDraft(testCase.id, { status: option.value })
                               }
-                              className={`rounded-lg border px-2 py-3 text-sm font-semibold transition-colors ${
+                              className={`flex h-8 items-center justify-center gap-1 rounded-lg border text-sm font-semibold transition-colors ${
                                 draft.status === option.value
                                   ? option.activeClassName
                                   : 'border-gray-700 bg-gray-900 text-gray-500 hover:text-gray-300'
                               }`}
                             >
-                              <span className="block text-base">{option.emoji}</span>
+                              <span>{option.emoji}</span>
                               {t(option.labelKey)}
                             </button>
                           ))}
                         </div>
 
-                        {draft.status && !needsActual && draft.actualResult && (
-                          <p className="mb-2 text-xs text-gray-500">
-                            {t('testCases.actualResult')}: {draft.actualResult}
-                          </p>
+                        {needsActual && (
+                          <div className="space-y-2 transition-all">
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-400">
+                                {t('testCases.actualResult')}
+                                <span className="text-red-400"> *</span>
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={draft.actualResult}
+                                onChange={(e) =>
+                                  updateDraft(testCase.id, {
+                                    actualResult: e.target.value,
+                                  })
+                                }
+                                className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-400">
+                                {t('testCases.notes')}
+                              </label>
+                              <textarea
+                                rows={1}
+                                value={draft.notes}
+                                onChange={(e) =>
+                                  updateDraft(testCase.id, { notes: e.target.value })
+                                }
+                                placeholder={t('common.optional')}
+                                className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                              />
+                            </div>
+                          </div>
                         )}
-
-                        <div className="mb-2">
-                          <label className="mb-1 block text-xs font-medium text-gray-400">
-                            {t('testCases.actualResult')}
-                            {needsActual && (
-                              <span className="text-red-400"> *</span>
-                            )}
-                          </label>
-                          <textarea
-                            rows={2}
-                            value={draft.actualResult}
-                            onChange={(e) =>
-                              updateDraft(testCase.id, {
-                                actualResult: e.target.value,
-                              })
-                            }
-                            className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-400">
-                            {t('testCases.notes')}
-                          </label>
-                          <textarea
-                            rows={1}
-                            value={draft.notes}
-                            onChange={(e) =>
-                              updateDraft(testCase.id, { notes: e.target.value })
-                            }
-                            placeholder={t('common.optional')}
-                            className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                          />
-                        </div>
                       </div>
                     )
                   })}
