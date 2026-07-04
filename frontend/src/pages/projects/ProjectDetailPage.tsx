@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react'
 import api from '../../api/client'
 import { PLATFORM_BADGE } from '../../lib/badges'
+import { invalidateQaData } from '../../lib/invalidateQaData'
+import { formatRelativeTime } from '../../lib/formatRelativeTime'
 import type { ApiResponse, Project } from '../../types'
 import ErrorState from './components/ErrorState'
 import JiraTasksTab from './tabs/JiraTasksTab'
@@ -25,7 +27,10 @@ export default function ProjectDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<TabKey>('jira')
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
+  const autoSyncedProjectId = useRef<string | null>(null)
 
   const {
     data: project,
@@ -40,6 +45,25 @@ export default function ProjectDetailPage() {
     },
     enabled: Boolean(id),
   })
+
+  const { mutate: sync, isPending: isSyncing } = useMutation({
+    mutationFn: (projectId: string) => api.post(`/jira/${projectId}/sync`),
+    onSuccess: () => {
+      invalidateQaData(queryClient)
+      setLastSyncedAt(new Date())
+    },
+  })
+
+  useEffect(() => {
+    if (
+      project &&
+      project.jiraProjectKey &&
+      autoSyncedProjectId.current !== project.id
+    ) {
+      autoSyncedProjectId.current = project.id
+      sync(project.id)
+    }
+  }, [project, sync])
 
   if (!id) return null
 
@@ -69,10 +93,25 @@ export default function ProjectDetailPage() {
               {project.name}
             </h1>
             <span
-              className={`rounded-full px-2 py-0.5 text-xs font-medium ${PLATFORM_BADGE[project.type]}`}
+              className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${PLATFORM_BADGE[project.type]}`}
             >
               {project.type}
             </span>
+            {project.jiraProjectKey && (
+              <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                {isSyncing ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin" />
+                    {t('jira.syncing')}
+                  </>
+                ) : lastSyncedAt ? (
+                  <>
+                    <RefreshCw size={12} />
+                    {t('jira.syncedAt', { time: formatRelativeTime(lastSyncedAt.toISOString()) })}
+                  </>
+                ) : null}
+              </span>
+            )}
           </div>
 
           <div className="mb-6 flex gap-6 border-b border-gray-800">

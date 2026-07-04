@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { PlayCircle, Search } from 'lucide-react'
+import { Loader2, PlayCircle, RefreshCw, Search } from 'lucide-react'
 import api from '../../api/client'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
 import { useDebouncedValue } from '../../lib/useDebouncedValue'
+import { invalidateQaData } from '../../lib/invalidateQaData'
 import { QA_OVERALL_STATUS_BADGE } from '../../lib/badges'
 import type {
   ApiResponse,
@@ -22,6 +23,7 @@ const LAST_PROJECT_KEY = 'qa-platform:last-dashboard-project'
 export default function DashboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [projectId, setProjectId] = useState<string | null>(
     () => localStorage.getItem(LAST_PROJECT_KEY),
   )
@@ -29,7 +31,9 @@ export default function DashboardPage() {
   const [qaRequestedByName, setQaRequestedByName] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [justSyncedAt, setJustSyncedAt] = useState<Date | null>(null)
   const debouncedSearch = useDebouncedValue(search)
+  const autoSyncedProjectId = useRef<string | null>(null)
 
   useEffect(() => {
     document.title = `${t('dashboard.title')} — QA Platform`
@@ -95,6 +99,32 @@ export default function DashboardPage() {
     return Array.from(names)
   }, [overview])
 
+  const { mutate: sync, isPending: isSyncing } = useMutation({
+    mutationFn: (id: string) => api.post(`/jira/${id}/sync`),
+    onSuccess: () => {
+      invalidateQaData(queryClient)
+      setJustSyncedAt(new Date())
+    },
+  })
+
+  useEffect(() => {
+    if (projectId && autoSyncedProjectId.current !== projectId) {
+      autoSyncedProjectId.current = projectId
+      setJustSyncedAt(null)
+      sync(projectId)
+    }
+  }, [projectId, sync])
+
+  const lastSyncedAt = useMemo(() => {
+    if (justSyncedAt) return justSyncedAt
+    const timestamps: string[] = []
+    overview?.readyForTesting.forEach((task) => timestamps.push(task.syncedAt))
+    overview?.inProgress.forEach(({ task }) => timestamps.push(task.syncedAt))
+    overview?.recentlyCompleted.forEach((s) => timestamps.push(s.jiraTask.syncedAt))
+    if (timestamps.length === 0) return null
+    return new Date(Math.max(...timestamps.map((ts) => new Date(ts).getTime())))
+  }, [overview, justSyncedAt])
+
   return (
     <div className="px-8 py-8">
       <div className="mb-8 flex items-start justify-between gap-4">
@@ -104,18 +134,35 @@ export default function DashboardPage() {
             {t('dashboard.subtitle')}
           </p>
         </div>
-        <select
-          value={projectId ?? ''}
-          onChange={(e) => setProjectId(e.target.value || null)}
-          className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-        >
-          <option value="">{t('common.selectAProject')}</option>
-          {projects?.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-col items-end gap-1">
+          <select
+            value={projectId ?? ''}
+            onChange={(e) => setProjectId(e.target.value || null)}
+            className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value="">{t('common.selectAProject')}</option>
+            {projects?.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+          {projectId && (
+            <span className="flex items-center gap-1.5 text-xs text-gray-500">
+              {isSyncing ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  {t('jira.syncing')}
+                </>
+              ) : lastSyncedAt ? (
+                <>
+                  <RefreshCw size={12} />
+                  {t('jira.lastSyncedAt', { time: formatRelativeTime(lastSyncedAt.toISOString()) })}
+                </>
+              ) : null}
+            </span>
+          )}
+        </div>
       </div>
 
       {!projectId && (
@@ -199,7 +246,7 @@ export default function DashboardPage() {
                       >
                         <div>
                           <div className="mb-2 flex items-center gap-2">
-                            <span className="inline-flex rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400 border border-indigo-500/30">
+                            <span className="inline-flex rounded-full bg-indigo-500/10 px-2 py-1 text-xs font-medium text-indigo-400 border border-indigo-500/30">
                               {task.jiraKey}
                             </span>
                             <span className="text-xs text-gray-500">
@@ -255,7 +302,7 @@ export default function DashboardPage() {
                         className="cursor-pointer rounded-xl border border-gray-700 bg-gray-800 p-4 hover:bg-gray-750"
                       >
                         <div className="mb-2 flex items-center gap-2">
-                          <span className="inline-flex rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400 border border-indigo-500/30">
+                          <span className="inline-flex rounded-full bg-indigo-500/10 px-2 py-1 text-xs font-medium text-indigo-400 border border-indigo-500/30">
                             {task.jiraKey}
                           </span>
                         </div>
@@ -300,7 +347,7 @@ export default function DashboardPage() {
                             </td>
                             <td className="px-4 py-3">
                               <span
-                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${QA_OVERALL_STATUS_BADGE[submission.overallStatus]}`}
+                                className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${QA_OVERALL_STATUS_BADGE[submission.overallStatus]}`}
                               >
                                 {t(`status.${submission.overallStatus.toLowerCase()}`)} ({submission.passCount}/
                                 {submission.totalCount})
